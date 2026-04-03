@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import {
-  Play, ChevronRight, Pencil,
+  Play, ChevronRight, Pencil, Star,
   Thermometer, Cloud, Wind, Flame,
 } from 'lucide-react-native';
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../constants/theme';
@@ -23,34 +23,21 @@ import { useTheme } from '../../constants/ThemeContext';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../../constants/ThemeContext';
 import { LetiMark } from '../components/LetiLogo';
 import {
-  MOCK_USER, MOCK_PLAN, MOCK_WEATHER,
-  getGreeting,
+  MOCK_USER, MOCK_PLAN, MOCK_WEATHER, MOCK_LAST_RUN,
+  getGreeting, formatDuration,
   type ActivePlan, type WeatherContext,
 } from '../../constants/mockData';
 
 // ─── Local constants ──────────────────────────────────────────────
 const PERSONAL_GOAL = { current: 3, target: 30, label: 'runs' };
 
-type DayState = 'done' | 'today' | 'upcoming' | 'rest';
-type WeekDay = { day: string; state: DayState; type?: string; km?: string };
-
-const THIS_WEEK: WeekDay[] = [
-  { day: 'Mon', state: 'done',     type: 'easy',  km: '9km'  },
-  { day: 'Tue', state: 'rest'                                  },
-  { day: 'Wed', state: 'today',    type: 'tempo', km: '8km'  },
-  { day: 'Thu', state: 'rest'                                  },
-  { day: 'Fri', state: 'upcoming', type: 'easy',  km: '9km'  },
-  { day: 'Sat', state: 'upcoming', type: 'long',  km: '21km' },
-  { day: 'Sun', state: 'rest'                                  },
-];
-
-const RUN_TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  easy:     { bg: '#D4EBEC', border: '#1B6C70', text: '#0D4D50' },
-  tempo:    { bg: '#1B6C70', border: '#155558', text: '#fff'    },
-  long:     { bg: '#0D2426', border: '#0A1A1B', text: '#E2F0F0' },
-  interval: { bg: '#EDE5FF', border: '#5E35B1', text: '#4527A0' },
-  race:     { bg: '#0A1A1B', border: '#0A1A1B', text: '#fff'    },
-};
+const NEXT_RUN = {
+  shortDay: 'Fri',
+  name: 'Long Run',
+  distanceKm: 14,
+  estTimeMin: 80,
+  effortLabel: 'Zone 2 · Easy pace',
+} as const;
 
 function useHomeData() {
   return { user: MOCK_USER, plan: MOCK_PLAN, weather: MOCK_WEATHER };
@@ -329,53 +316,53 @@ function StartRunButton({ C, s, height }: {
   );
 }
 
-// ─── Week bar ─────────────────────────────────────────────────────
-function WeekBar({ C, s }: { C: ColorPalette; s: ReturnType<typeof makeStyles> }) {
-  const { width } = useWindowDimensions();
-  const cellW = Math.floor((width - Spacing.md * 2) / 7);
-
+// ─── Last Run + Next Run (below START RUN) ───────────────────────
+function LastNextRunRow({
+  s, distUnit, screenHeight,
+}: {
+  s: ReturnType<typeof makeStyles>;
+  distUnit: 'km' | 'mi';
+  screenHeight: number;
+}) {
+  const minH = screenHeight < 700 ? 80 : 100;
   return (
-    <View style={[s.card, { flex: 1, minHeight: 80, padding: 13 }]}>
-      <View style={s.weekBarHeader}>
-        <Text style={s.weekBarKicker}>This Week</Text>
-        <TouchableOpacity onPress={() => router.push('/plan')} activeOpacity={0.7}>
-          <Text style={s.weekBarLink}>Full plan →</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={s.weekBarRow}>
-        {THIS_WEEK.map((d) => {
-          const cfg      = d.type ? RUN_TYPE_COLORS[d.type] : null;
-          const isToday    = d.state === 'today';
-          const isDone     = d.state === 'done';
-          const isUpcoming = d.state === 'upcoming';
-          const isRest     = d.state === 'rest';
-
-          return (
-            <View key={d.day} style={[s.weekCell, { width: cellW }]}>
-              <Text style={[
-                s.weekDayLabel,
-                isToday && { color: C.primary, fontFamily: FontFamily.uiBold },
-              ]}>
-                {d.day}
-              </Text>
-              {isRest ? (
-                <View style={s.weekRestDot} />
-              ) : cfg ? (
-                <View style={[
-                  s.weekRunBlock,
-                  { backgroundColor: cfg.bg, borderColor: cfg.border },
-                  isDone     && { opacity: 0.38 },
-                  isToday    && { borderWidth: 2, borderColor: C.primary },
-                  isUpcoming && { borderStyle: 'dashed' as any },
-                ]}>
-                  <Text style={[s.weekRunKm, { color: cfg.text }]}>{d.km}</Text>
-                  {isToday && <View style={[s.weekTodayDot, { backgroundColor: C.primary }]} />}
-                  {isDone  && <Text style={[s.weekDoneCheck, { color: cfg.text }]}>✓</Text>}
-                </View>
-              ) : null}
+    <View style={[s.lastNextRow, { minHeight: minH }]}>
+      <View style={[s.card, s.runSummaryCard]}>
+        {MOCK_LAST_RUN ? (
+          <>
+            <Text style={s.runCardKicker}>
+              LAST RUN · {MOCK_LAST_RUN.shortDay.toUpperCase()}
+            </Text>
+            <View style={s.runCardDistRow}>
+              <Text style={s.runCardDistNum}>{fmtDist(MOCK_LAST_RUN.distanceKm, distUnit, 1)}</Text>
+              <Text style={s.runCardDistUnit}>{distLabel(distUnit)}</Text>
             </View>
-          );
-        })}
+            <Text style={s.runCardSub}>
+              {formatDuration(MOCK_LAST_RUN.durationSec)} · {fmtPace(MOCK_LAST_RUN.avgPace, distUnit)}{paceLabel(distUnit)}
+            </Text>
+            {MOCK_LAST_RUN.isPR === true && (
+              <View style={s.prBanner}>
+                <Star size={10} color="#FFD700" fill="#FFD700" />
+                <Text style={s.prBannerText}>PR PACE</Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={s.runCardKicker}>LAST RUN</Text>
+            <Text style={[s.runCardSub, { marginTop: 6 }]}>No runs logged yet.</Text>
+          </>
+        )}
+      </View>
+      <View style={[s.card, s.runSummaryCard]}>
+        <Text style={s.runCardKicker}>
+          NEXT RUN · {NEXT_RUN.shortDay.toUpperCase()}
+        </Text>
+        <Text style={s.nextRunName}>{NEXT_RUN.name}</Text>
+        <Text style={s.nextRunSub}>
+          {fmtDist(NEXT_RUN.distanceKm, distUnit, 0)} {distLabel(distUnit)} · ~{NEXT_RUN.estTimeMin} min
+        </Text>
+        <Text style={s.nextRunEffort}>{NEXT_RUN.effortLabel.toUpperCase()}</Text>
       </View>
     </View>
   );
@@ -384,7 +371,7 @@ function WeekBar({ C, s }: { C: ColorPalette; s: ReturnType<typeof makeStyles> }
 // ─── Screen ──────────────────────────────────────────────────────
 export default function HomeScreen() {
   const { colors: C, isDark, distUnit } = useTheme();
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const isSmall = height < 700;
 
   const { user, plan, weather } = useHomeData();
@@ -435,14 +422,16 @@ export default function HomeScreen() {
         {/* ③ MOTIVATION STRIP */}
         <MotivationStrip C={C} s={s} height={motivHeight} />
 
-        {/* ④ LETI INSIGHT */}
-        <LetiInsightCard C={C} s={s} />
-
-        {/* ⑤ START RUN — swipe left to add manually */}
+        {/* ④ START RUN — swipe left to add manually */}
         <StartRunButton C={C} s={s} height={startHeight} />
 
-        {/* ⑥ WEEK BAR */}
-        <WeekBar C={C} s={s} />
+        {/* ⑤ LAST RUN + NEXT RUN */}
+        <LastNextRunRow s={s} distUnit={distUnit} screenHeight={height} />
+
+        {/* ⑥ LETI INSIGHT */}
+        <View style={{ marginBottom: Spacing.sm }}>
+          <LetiInsightCard C={C} s={s} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -539,6 +528,30 @@ function makeStyles(C: ColorPalette) {
       lineHeight: 19,
     },
 
+    // Last Run + Next Run row
+    lastNextRow:       { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
+    runSummaryCard:    { flex: 1, padding: 13 },
+    runCardKicker:     { fontFamily: FontFamily.uiSemiBold, fontSize: 9, color: C.textMuted, letterSpacing: 1.3, textTransform: 'uppercase' },
+    runCardDistRow:    { flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: 4 },
+    runCardDistNum:    { fontFamily: FontFamily.displayExtraBold, fontSize: 28, color: C.textPrimary },
+    runCardDistUnit:   { fontFamily: FontFamily.displayBold, fontSize: 13, color: C.textSecondary, paddingBottom: 2 },
+    runCardSub:        { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
+    prBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      alignSelf: 'flex-start',
+      marginTop: 6,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: 4,
+      backgroundColor: C.dark,
+    },
+    prBannerText:      { fontFamily: FontFamily.uiSemiBold, fontSize: 8.5, color: C.white, textTransform: 'uppercase' },
+    nextRunName:       { fontFamily: FontFamily.displayBold, fontSize: 16, color: C.textPrimary, marginTop: 4 },
+    nextRunSub:        { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
+    nextRunEffort:     { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 4 },
+
     // ⑤ Start Run — swipe container
     startOuter: {
       overflow: 'hidden',
@@ -580,7 +593,7 @@ function makeStyles(C: ColorPalette) {
     startLabel: {
       fontFamily: FontFamily.displayBold,
       fontSize: 20,
-      color: C.accent,
+      color: C.bg,
       letterSpacing: 4,
       textTransform: 'uppercase',
     },
@@ -599,18 +612,5 @@ function makeStyles(C: ColorPalette) {
     sheetOptionSub:            { fontFamily: FontFamily.uiRegular, fontSize: 12, color: C.textMuted, marginTop: 1 },
     sheetCancel:               { marginTop: 14, alignItems: 'center', paddingVertical: 8 },
     sheetCancelText:           { fontFamily: FontFamily.uiSemiBold, fontSize: 14, color: C.textMuted },
-
-    // ⑥ Week bar
-    weekBarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    weekBarKicker: { fontFamily: FontFamily.uiSemiBold, fontSize: 9, color: C.textMuted, letterSpacing: 1.3, textTransform: 'uppercase' },
-    weekBarLink:   { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.primary },
-    weekBarRow:    { flexDirection: 'row', alignItems: 'flex-end' },
-    weekCell:      { alignItems: 'center', gap: 5 },
-    weekDayLabel:  { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-    weekRestDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: C.border },
-    weekRunBlock:  { width: '85%' as any, aspectRatio: 0.9, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', gap: 2 },
-    weekRunKm:     { fontFamily: FontFamily.uiBold, fontSize: 7, textTransform: 'uppercase', letterSpacing: 0.2 },
-    weekTodayDot:  { width: 4, height: 4, borderRadius: 2 },
-    weekDoneCheck: { fontSize: 7, opacity: 0.7 },
   });
 }
