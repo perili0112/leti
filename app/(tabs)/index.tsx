@@ -381,8 +381,9 @@ export default function HomeScreen() {
 
   const motivHeight = isSmall ? 46 : 54;
   const startHeight = isSmall ? 72 : 84;
-  const sectionGap  = isSmall ? 12 : 16;
-
+  const sectionGap = 12;
+  const scrollGapTight = sectionGap - 2;
+  const scrollGapAroundStart = sectionGap + 6;
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
@@ -402,35 +403,43 @@ export default function HomeScreen() {
       {/* SCROLL */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[s.scrollContent, { gap: sectionGap }]}
+        contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* ② TODAY'S PLAN */}
-        {!user.isPremium
-          ? <PlanCardLocked C={C} s={s} />
-          : plan === null
-            ? (
-              <View style={[s.planCard, { padding: Spacing.xl, alignItems: 'center', gap: Spacing.sm }]}>
-                <Text style={s.planRunName}>No plan yet</Text>
-                <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/plan')}>
-                  <Text style={s.upgradeBtnText}>Build a plan →</Text>
-                </TouchableOpacity>
-              </View>
-            )
-            : <PlanCardActive plan={plan} C={C} s={s} distUnit={distUnit} isSmall={isSmall} />
-        }
+        <View style={{ marginBottom: scrollGapTight }}>
+          {!user.isPremium
+            ? <PlanCardLocked C={C} s={s} />
+            : plan === null
+              ? (
+                <View style={[s.planCard, { padding: Spacing.xl, alignItems: 'center', gap: Spacing.sm }]}>
+                  <Text style={s.planRunName}>No plan yet</Text>
+                  <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/plan')}>
+                    <Text style={s.upgradeBtnText}>Build a plan →</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+              : <PlanCardActive plan={plan} C={C} s={s} distUnit={distUnit} isSmall={isSmall} />
+          }
+        </View>
 
         {/* ③ MOTIVATION STRIP */}
-        <MotivationStrip C={C} s={s} height={motivHeight} />
+        <View style={{ marginBottom: scrollGapAroundStart }}>
+          <MotivationStrip C={C} s={s} height={motivHeight} />
+        </View>
 
         {/* ④ START RUN — swipe left to add manually */}
-        <StartRunButton C={C} s={s} height={startHeight} />
+        <View style={{ marginBottom: scrollGapAroundStart }}>
+          <StartRunButton C={C} s={s} height={startHeight} />
+        </View>
 
         {/* ⑤ LAST RUN + NEXT RUN */}
-        <LastNextRunRow s={s} distUnit={distUnit} screenHeight={height} />
+        <View style={{ marginBottom: scrollGapTight }}>
+          <LastNextRunRow s={s} distUnit={distUnit} screenHeight={height} />
+        </View>
 
         {/* ⑥ LETI INSIGHT */}
-        <View style={{ marginBottom: Spacing.sm }}>
+        <View style={{ marginBottom: 0 }}>
           <LetiInsightCard C={C} s={s} />
         </View>
       </ScrollView>
