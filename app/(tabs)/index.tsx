@@ -94,7 +94,6 @@ function PlanCardActive({
   const statsPV = isSmall ? 6 : 8;
   return (
     <View style={s.planCard}>
-      <View style={s.planAccentBar} />
       <View style={s.planHeaderRow}>
         <Text style={s.planKicker}>Today's Plan</Text>
         {run && (
@@ -384,7 +383,7 @@ export default function HomeScreen() {
 
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* ① HEADER */}
@@ -466,7 +465,6 @@ function makeStyles(C: ColorPalette) {
 
     // ② Plan card — only card that gets a shadow (primary content)
     planCard:        { backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden', ...Shadow.card },
-    planAccentBar:   { height: 3, backgroundColor: C.primary },
     planHeaderRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
     planKicker:      { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.textMuted, letterSpacing: 1.5, textTransform: 'uppercase' },
     weekPill:        { backgroundColor: C.dark, borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3 },
