@@ -11,14 +11,13 @@
 import React, { useMemo, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Animated, Pressable, Modal, useWindowDimensions, PanResponder,
+  Animated, useWindowDimensions, PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import {
-  Play, ChevronRight, Pencil, Star,
-  Thermometer, Cloud, Wind, Flame,
+  Star, Thermometer, Cloud, Wind, Flame,
 } from 'lucide-react-native';
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
@@ -188,132 +187,132 @@ function MotivationStrip({ C, s, height }: {
   );
 }
 
-// ─── Start Run — swipe left reveals Add Manually ──────────────────
-const SWIPE_THRESHOLD = 90;
-const REVEAL_WIDTH    = 110; // px of "Add manually" panel revealed
+const SWIPE_PAGE_THRESHOLD = 60;
 
 function StartRunButton({ C, s, height }: {
   C: ColorPalette; s: ReturnType<typeof makeStyles>; height: number;
 }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const [swiped, setSwiped] = useState(false);
+  const { width: screenW } = useWindowDimensions();
+  const containerWidth = Math.max(0, screenW - Spacing.md * 2);
 
-  // Sheet modal state (kept from previous versions)
-  const [showSheet, setShowSheet]   = useState(false);
-  const slideAnim = useRef(new Animated.Value(300)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const [activePage, setActivePage] = useState<0 | 1>(0);
+  const panStartXRef = useRef(0);
 
-  const openSheet = () => {
-    setShowSheet(true);
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 220, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }),
-    ]).start();
-  };
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, g) =>
+          Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
 
-  const closeSheet = (cb?: () => void) => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 0, duration: 180, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 300, duration: 180, useNativeDriver: true }),
-    ]).start(() => { setShowSheet(false); cb?.(); });
-  };
+        onPanResponderGrant: () => {
+          const w = containerWidth;
+          panStartXRef.current = activePage === 0 ? 0 : -w;
+        },
 
-  const snapBack = () => {
-    setSwiped(false);
-    Animated.spring(translateX, {
-      toValue: 0, useNativeDriver: true, tension: 120, friction: 14,
-    }).start();
-  };
+        onPanResponderMove: (_, g) => {
+          const w = containerWidth;
+          if (w <= 0) return;
+          const next = Math.max(-w, Math.min(0, panStartXRef.current + g.dx));
+          swipeX.setValue(next);
+        },
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 6 && Math.abs(g.dx) > Math.abs(g.dy),
-
-      onPanResponderMove: (_, g) => {
-        // Only allow leftward drag, cap at REVEAL_WIDTH
-        const x = Math.max(-REVEAL_WIDTH, Math.min(0, g.dx));
-        translateX.setValue(x);
-        setSwiped(x < -SWIPE_THRESHOLD / 2);
-      },
-
-      onPanResponderRelease: (_, g) => {
-        if (g.dx < -SWIPE_THRESHOLD) {
-          // Full swipe — navigate
-          Animated.spring(translateX, {
-            toValue: -REVEAL_WIDTH, useNativeDriver: true, tension: 120, friction: 14,
-          }).start(() => {
-            snapBack();
-            router.push('/add-run' as any);
+        onPanResponderRelease: (_, g) => {
+          const w = containerWidth;
+          if (w <= 0) return;
+          const current = panStartXRef.current + g.dx;
+          let target = 0;
+          if (activePage === 0) {
+            target = current <= -SWIPE_PAGE_THRESHOLD ? -w : 0;
+          } else {
+            target = current >= -w + SWIPE_PAGE_THRESHOLD ? 0 : -w;
+          }
+          Animated.spring(swipeX, {
+            toValue: target,
+            useNativeDriver: true,
+            tension: 120,
+            friction: 14,
+          }).start(({ finished }) => {
+            if (finished) setActivePage(target === 0 ? 0 : 1);
           });
-        } else {
-          // Partial — snap back
-          snapBack();
-        }
-      },
-      onPanResponderTerminate: () => snapBack(),
-    })
-  ).current;
+        },
+
+        onPanResponderTerminate: (_, g) => {
+          const w = containerWidth;
+          if (w <= 0) return;
+          const current = panStartXRef.current + g.dx;
+          let target = 0;
+          if (activePage === 0) {
+            target = current <= -SWIPE_PAGE_THRESHOLD ? -w : 0;
+          } else {
+            target = current >= -w + SWIPE_PAGE_THRESHOLD ? 0 : -w;
+          }
+          Animated.spring(swipeX, {
+            toValue: target,
+            useNativeDriver: true,
+            tension: 120,
+            friction: 14,
+          }).start(({ finished }) => {
+            if (finished) setActivePage(target === 0 ? 0 : 1);
+          });
+        },
+      }),
+    [containerWidth, activePage],
+  );
+
+  const rowWidth = containerWidth * 2;
 
   return (
-    <>
-      {/* Container clips the sliding button so the reveal stays bounded */}
-      <View style={[s.startOuter, { height, borderRadius: Radius.lg }]}>
-
-        {/* "Add manually" revealed panel — sits behind the sliding button */}
-        <View style={[s.addManuallyPanel, { width: REVEAL_WIDTH, borderRadius: Radius.lg }]}>
-          <Pencil size={18} color={C.textSecondary} />
-          <Text style={s.addManuallyLabel}>Add{'\n'}manually</Text>
-        </View>
-
-        {/* Main START RUN button — slides left */}
+    <View>
+      <View style={[s.startCarouselClip, { height, borderRadius: Radius.lg }]}>
         <Animated.View
-          style={[s.startBtnWrap, { transform: [{ translateX }] }]}
+          style={[
+            s.startCarouselRow,
+            {
+              width: rowWidth,
+              transform: [{ translateX: swipeX }],
+            },
+          ]}
           {...panResponder.panHandlers}
         >
-          <TouchableOpacity
-            style={[s.startBtn, { height }]}
-            onPress={() => router.push('/run-tracker')}
-            activeOpacity={0.92}
-          >
-            <Text style={s.startLabel}>Start Run</Text>
-          </TouchableOpacity>
+          <View style={{ width: containerWidth, height }}>
+            <TouchableOpacity
+              style={[s.startBtn, { height, width: containerWidth }]}
+              onPress={() => router.push('/run-tracker')}
+              activeOpacity={0.92}
+            >
+              <Text style={s.startLabel}>START RUN</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ width: containerWidth, height }}>
+            <TouchableOpacity
+              style={[s.addManuallyCarouselBtn, { height, width: containerWidth }]}
+              onPress={() => router.push('/add-run' as any)}
+              activeOpacity={0.92}
+            >
+              <Text style={s.addManuallyCarouselTitle}>Add Manually</Text>
+              <Text style={s.addManuallyCarouselSub}>Log a past run</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
 
-      {/* Sheet modal — kept for any future long-press path */}
-      <Modal visible={showSheet} transparent animationType="none" statusBarTranslucent onRequestClose={() => closeSheet()}>
-        <Animated.View style={[s.sheetScrim, { opacity: fadeAnim }]}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => closeSheet()} />
-        </Animated.View>
-        <Animated.View style={[s.sheet, { transform: [{ translateY: slideAnim }] }]}>
-          <View style={s.sheetHandle} />
-          <Text style={s.sheetTitle}>Ready to run?</Text>
-          <TouchableOpacity style={s.sheetOptionPrimary} onPress={() => closeSheet(() => router.push('/run-tracker'))} activeOpacity={0.85}>
-            <View style={s.sheetOptionIcon}><Play size={20} color="#fff" /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.sheetOptionLabel}>Start Tracking</Text>
-              <Text style={s.sheetOptionSub}>GPS-tracked run</Text>
-            </View>
-            <ChevronRight size={16} color="rgba(255,255,255,0.5)" />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.sheetOptionSecondary} onPress={() => closeSheet(() => router.push('/add-run' as any))} activeOpacity={0.8}>
-            <View style={[s.sheetOptionIcon, s.sheetOptionIconSecondary]}>
-              <Pencil size={18} color={C.textSecondary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.sheetOptionLabelSecondary}>Add Manually</Text>
-              <Text style={s.sheetOptionSub}>Log a past run</Text>
-            </View>
-            <ChevronRight size={16} color={C.textMuted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.sheetCancel} onPress={() => closeSheet()} activeOpacity={0.7}>
-            <Text style={s.sheetCancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </Modal>
-    </>
+      <View style={s.startCarouselDots}>
+        <View
+          style={[
+            s.startCarouselDot,
+            activePage === 0 ? s.startCarouselDotActive : s.startCarouselDotInactive,
+          ]}
+        />
+        <View
+          style={[
+            s.startCarouselDot,
+            activePage === 1 ? s.startCarouselDotActive : s.startCarouselDotInactive,
+          ]}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -561,34 +560,14 @@ function makeStyles(C: ColorPalette) {
     nextRunSub:        { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
     nextRunEffort:     { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10 },
 
-    // ⑤ Start Run — swipe container
-    startOuter: {
+    // ⑤ Start Run — horizontal carousel
+    startCarouselClip: {
       overflow: 'hidden',
-      position: 'relative',
-      backgroundColor: C.cardAlt,
-      borderWidth: 1,
-      borderColor: C.border,
     },
-    addManuallyPanel: {
-      position: 'absolute',
-      top: 0, right: 0, bottom: 0,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 4,
-    },
-    addManuallyLabel: {
-      fontFamily: FontFamily.uiSemiBold,
-      fontSize: 10,
-      color: C.textSecondary,
-      textAlign: 'center',
-      letterSpacing: 0.2,
-    },
-    startBtnWrap: {
-      position: 'absolute',
-      top: 0, left: 0, right: 0, bottom: 0,
+    startCarouselRow: {
+      flexDirection: 'row',
     },
     startBtn: {
-      flex: 1,
       backgroundColor: C.dark,
       borderRadius: Radius.lg,
       alignItems: 'center',
@@ -606,20 +585,44 @@ function makeStyles(C: ColorPalette) {
       letterSpacing: 4,
       textTransform: 'uppercase',
     },
-
-    // Bottom sheet
-    sheetScrim:                { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-    sheet:                     { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border },
-    sheetHandle:               { width: 36, height: 4, borderRadius: 2, backgroundColor: C.borderMedium, alignSelf: 'center', marginBottom: 18 },
-    sheetTitle:                { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.textMuted, letterSpacing: 1.4, textTransform: 'uppercase', textAlign: 'center', marginBottom: 16 },
-    sheetOptionPrimary:        { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 16, marginBottom: 10, backgroundColor: C.dark, borderRadius: Radius.lg, padding: 16 },
-    sheetOptionSecondary:      { flexDirection: 'row', alignItems: 'center', gap: 14, marginHorizontal: 16, backgroundColor: C.cardAlt, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, padding: 16 },
-    sheetOptionIcon:           { width: 40, height: 40, borderRadius: 12, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' },
-    sheetOptionIconSecondary:  { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border },
-    sheetOptionLabel:          { fontFamily: FontFamily.uiSemiBold, fontSize: 15, color: '#FFFFFF' },
-    sheetOptionLabelSecondary: { fontFamily: FontFamily.uiSemiBold, fontSize: 15, color: C.textPrimary },
-    sheetOptionSub:            { fontFamily: FontFamily.uiRegular, fontSize: 12, color: C.textMuted, marginTop: 1 },
-    sheetCancel:               { marginTop: 14, alignItems: 'center', paddingVertical: 8 },
-    sheetCancelText:           { fontFamily: FontFamily.uiSemiBold, fontSize: 14, color: C.textMuted },
+    addManuallyCarouselBtn: {
+      backgroundColor: C.card,
+      borderWidth: 1.5,
+      borderColor: C.borderStrong,
+      borderRadius: Radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addManuallyCarouselTitle: {
+      fontFamily: FontFamily.displayBold,
+      fontSize: 20,
+      color: C.textPrimary,
+    },
+    addManuallyCarouselSub: {
+      fontFamily: FontFamily.uiRegular,
+      fontSize: 11,
+      color: C.textMuted,
+      marginTop: 2,
+    },
+    startCarouselDots: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+    },
+    startCarouselDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+    },
+    startCarouselDotActive: {
+      backgroundColor: C.dark,
+    },
+    startCarouselDotInactive: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: C.dark,
+    },
   });
 }
