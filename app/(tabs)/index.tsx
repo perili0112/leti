@@ -401,11 +401,11 @@ export default function HomeScreen() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* ① HEADER */}
-      <View style={[s.header, { paddingVertical: isSmall ? 10 : 14 }]}>
-        <View style={{ gap: 2 }}>
+      <View style={[s.header, { paddingVertical: isSmall ? 14 : 20 }]}>
+        <View style={{ gap: isSmall ? 10 : 14 }}>
           <Text style={s.wordmark}>Leti</Text>
           <Text style={[s.greeting, { fontSize: isSmall ? 26 : 32 }]}>{greeting}</Text>
-          <View style={{ marginTop: 6, opacity: 0.55 }}>
+          <View style={{ opacity: 0.55 }}>
             <WeatherLine weather={weather} C={C} s={s} />
           </View>
         </View>
@@ -468,7 +468,7 @@ function makeStyles(C: ColorPalette) {
       borderBottomWidth: 1,
       borderBottomColor: C.border,
     },
-    wordmark:    { fontFamily: FontFamily.uiSemiBold, fontSize: 8, textTransform: 'uppercase', letterSpacing: 3.5, color: C.textMuted, marginBottom: 2 },
+    wordmark:    { fontFamily: FontFamily.uiSemiBold, fontSize: 8, textTransform: 'uppercase', letterSpacing: 3.5, color: C.textMuted },
     greeting:    { fontFamily: FontFamily.displayBold, color: C.textPrimary, letterSpacing: -0.5, lineHeight: 36 },
     contextLine: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 1 },
     wxStrip:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
