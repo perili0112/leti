@@ -5,7 +5,9 @@
 
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { useFonts } from 'expo-font';
+import * as NavigationBar from 'expo-navigation-bar';
 import {
   BarlowSemiCondensed_300Light,
   BarlowSemiCondensed_400Regular,
@@ -27,6 +29,13 @@ import { ThemeProvider } from '../constants/ThemeContext';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  // Android: keep the system navigation bar out of the app window so the tab bar
+  // is not drawn underneath the back/home/recents row (Expo SDK edge-to-edge default).
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    NavigationBar.setPositionAsync('relative').catch(() => {});
+  }, []);
+
   const [fontsLoaded, fontError] = useFonts({
     // Barlow Semi Condensed — display / big numbers
     BarlowSemiCondensed_300Light,
