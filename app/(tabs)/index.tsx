@@ -1,4 +1,6 @@
-// app/(tabs)/index.tsx — Home screen v12
+// app/(tabs)/index.tsx — Home screen v13
+// Changes from v12:
+//   - Wider vertical gap between scroll sections; more space between next-run distance line and zone
 // Changes from v11:
 //   - Swipe-left on START RUN reveals "Add manually" (PanResponder)
 //   - Single card language: white bg + border only (no shadow) except plan card
@@ -379,7 +381,7 @@ export default function HomeScreen() {
 
   const motivHeight = isSmall ? 46 : 54;
   const startHeight = isSmall ? 72 : 84;
-  const sectionGap  = isSmall ? 7  : 9;
+  const sectionGap  = isSmall ? 12 : 16;
 
 
   return (
@@ -548,7 +550,7 @@ function makeStyles(C: ColorPalette) {
     prBannerText:      { fontFamily: FontFamily.uiSemiBold, fontSize: 8.5, color: C.white, textTransform: 'uppercase' },
     nextRunName:       { fontFamily: FontFamily.displayBold, fontSize: 16, color: C.textPrimary, marginTop: 4 },
     nextRunSub:        { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
-    nextRunEffort:     { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 4 },
+    nextRunEffort:     { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10 },
 
     // ⑤ Start Run — swipe container
     startOuter: {
