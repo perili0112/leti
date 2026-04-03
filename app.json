@@ -3,6 +3,7 @@
     "name": "leti",
     "slug": "leti",
     "version": "1.0.0",
+    "scheme": "leti",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
