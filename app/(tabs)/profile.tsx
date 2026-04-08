@@ -1,10 +1,10 @@
 // app/(tabs)/profile.tsx — Profile screen, fully theme-aware
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { KeyboardTypeOptions, ViewStyle } from 'react-native';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  Alert, Animated, Modal, TouchableWithoutFeedback, Easing,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Platform, Pressable,
+  Alert, Animated, StyleSheet, TouchableWithoutFeedback, Easing, BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -12,7 +12,7 @@ import {
   ArrowLeft, X, ChevronRight,
   Pencil, Clock, Search, SlidersHorizontal, Camera,
   Trash2, CheckCircle, Star, Flame, Award, Target, Activity,
-  Navigation, Calendar, Flag, Zap, Trophy, TrendingUp, Timer, Lock,
+  Zap, TrendingUp, Lock,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../constants/theme';
@@ -20,7 +20,6 @@ import { useTheme } from '../../constants/ThemeContext';
 import {
   MOCK_MILESTONES,
   type MilestoneCategory,
-  type MilestoneIconKey,
   type MilestoneTier,
   type TierName,
   type SpecialBadgeIconKey,
@@ -110,19 +109,36 @@ function SectionLabel({ text, C }: { text: string; C: ColorPalette }) {
   return <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.textMuted, letterSpacing: 1.3, textTransform: 'uppercase' }}>{text}</Text>;
 }
 
+const headerIconRipple =
+  Platform.OS === 'android' ? { color: 'rgba(10,26,27,0.12)', borderless: false, radius: 18 } : undefined;
+
 function BackButton({ onPress, C }: { onPress: () => void; C: ColorPalette }) {
   return (
-    <TouchableOpacity style={{ width: 36, height: 36, borderRadius: 9, borderWidth: 1.5, borderColor: C.borderMedium, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }} onPress={onPress} activeOpacity={0.7}>
+    <Pressable
+      onPress={onPress}
+      android_ripple={headerIconRipple}
+      style={({ pressed }) => [
+        { width: 36, height: 36, borderRadius: 9, overflow: 'hidden', borderWidth: 1.5, borderColor: C.borderMedium, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+        Platform.OS === 'ios' && pressed ? { opacity: 0.72 } : null,
+      ]}
+    >
       <ArrowLeft size={16} color={C.textPrimary} />
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 function CloseButton({ onPress, C }: { onPress: () => void; C: ColorPalette }) {
   return (
-    <TouchableOpacity style={{ width: 36, height: 36, borderRadius: 9, borderWidth: 1.5, borderColor: C.borderMedium, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' }} onPress={onPress} activeOpacity={0.7}>
+    <Pressable
+      onPress={onPress}
+      android_ripple={headerIconRipple}
+      style={({ pressed }) => [
+        { width: 36, height: 36, borderRadius: 9, overflow: 'hidden', borderWidth: 1.5, borderColor: C.borderMedium, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
+        Platform.OS === 'ios' && pressed ? { opacity: 0.72 } : null,
+      ]}
+    >
       <X size={14} color={C.textSecondary} />
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -190,20 +206,6 @@ function Field({ label, value, onChange, keyboardType, C }: {
   );
 }
 
-function MilestoneIcon({ iconKey, color, size = 17 }: { iconKey: MilestoneIconKey; color: string; size?: number }) {
-  switch (iconKey) {
-    case 'distance':     return <Navigation  size={size} color={color} />;
-    case 'runs':         return <Activity    size={size} color={color} />;
-    case 'dailyStreak':  return <Flame       size={size} color={color} fill={color} />;
-    case 'weeklyStreak': return <Calendar    size={size} color={color} />;
-    case 'flag':         return <Flag        size={size} color={color} />;
-    case 'ultra':        return <Zap         size={size} color={color} />;
-    case 'races':        return <Trophy      size={size} color={color} />;
-    case 'elevation':    return <TrendingUp  size={size} color={color} />;
-    default:             return <Timer       size={size} color={color} />;
-  }
-}
-
 function SpecialBadgeIcon({ iconKey, color, size = 20 }: { iconKey: SpecialBadgeIconKey; color: string; size?: number }) {
   switch (iconKey) {
     case 'firstStep':    return <Star        size={size} color={color} fill={color} />;
@@ -217,10 +219,12 @@ function SpecialBadgeIcon({ iconKey, color, size = 20 }: { iconKey: SpecialBadge
   }
 }
 
-function TierBadge({ tier, small = false, onDark = false }: { tier: TierName; small?: boolean; onDark?: boolean }) {
+function TierBadge({ tier, small = false, onDark = false, compact = false }: { tier: TierName; small?: boolean; onDark?: boolean; compact?: boolean }) {
   const s = TIER_STYLES[tier];
+  const outlined = onDark || !compact;
+  const bg = onDark ? 'rgba(255,255,255,0.18)' : compact ? 'transparent' : s.bg;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: onDark ? 'rgba(255,255,255,0.18)' : s.bg, borderWidth: 1, borderColor: onDark ? 'rgba(255,255,255,0.30)' : s.border, borderRadius: 5, paddingHorizontal: small ? 5 : 7, paddingVertical: small ? 2 : 3 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: bg, borderWidth: outlined ? 1 : 0, borderColor: onDark ? 'rgba(255,255,255,0.30)' : s.border, borderRadius: 5, paddingHorizontal: small ? 5 : 7, paddingVertical: small ? 2 : 3 }}>
       {tier === 'Legend' && <Star size={7} color={onDark ? '#fff' : s.text} fill={onDark ? '#fff' : s.text} />}
       <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: small ? 9 : 10.5, color: onDark ? '#fff' : s.text, letterSpacing: 0.2 }}>{tier}</Text>
     </View>
@@ -230,35 +234,30 @@ function TierBadge({ tier, small = false, onDark = false }: { tier: TierName; sm
 // Milestone compact card
 // Layout: [Label ..... Value]
 //         [Tier badge       ]
-//         [progress bar     ]
 // Whole card is colored — NO internal stripe
-function MilestoneCompactCard({ cat, onOpen, C }: {
+function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
   cat: MilestoneCategory;
+  openCatId: string | null;
   onOpen: (layout: MilestoneLayout) => void;
+  onClose: () => void;
   C: ColorPalette;
 }) {
   const ref = useRef<View>(null);
   const earnedIdx  = getEarnedTierIndex(cat);
   const earnedTier = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
   const ts = earnedTier ? TIER_STYLES[earnedTier] : NO_TIER;
-  const nextTier = cat.tiers[earnedIdx + 1];
-
-  let pct = 0;
-  if (nextTier && cat.currentValue !== null) {
-    if (cat.higherIsBetter) {
-      const prev = earnedIdx >= 0 ? cat.tiers[earnedIdx].target : 0;
-      pct = ((cat.currentValue - prev) / (nextTier.target - prev)) * 100;
-    } else {
-      const prev = earnedIdx >= 0 ? cat.tiers[earnedIdx].target : cat.tiers[0].target + 600;
-      pct = ((prev - cat.currentValue) / (prev - nextTier.target)) * 100;
-    }
-  }
 
   const handlePress = () => {
+    if (openCatId === cat.id) {
+      onClose();
+      return;
+    }
     ref.current?.measureInWindow((x: number, y: number, width: number, height: number) => {
       onOpen({ x, y, width, height });
     });
   };
+
+  const cardBg = earnedTier ? ts.bg : C.primaryFaint;
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.78} style={{ flex: 1 }}>
@@ -267,70 +266,49 @@ function MilestoneCompactCard({ cat, onOpen, C }: {
         collapsable={false}
         style={{
           flex: 1,
-          backgroundColor: ts.bg,
+          backgroundColor: cardBg,
           borderRadius: Radius.lg,
-          borderWidth: 1.5,
-          borderColor: ts.border,
+          borderWidth: 1,
+          borderColor: C.border,
           padding: 12,
-          gap: 6,
+          gap: 8,
         }}
       >
         {/* Row 1: label left, current value right */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15, flex: 1 }} numberOfLines={2}>
             {cat.label}
           </Text>
-          <Text style={{ fontFamily: FontFamily.displayExtraBold, fontSize: 16, lineHeight: 18, color: earnedTier ? ts.text : C.textMuted, flexShrink: 0, maxWidth: '55%', textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={{ fontFamily: FontFamily.displayExtraBold, fontSize: 24, lineHeight: 26, color: earnedTier ? ts.text : C.textMuted, flexShrink: 0, maxWidth: '58%', textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrentValue(cat)}
           </Text>
         </View>
 
-        {/* Row 2: tier badge */}
-        {earnedTier
-          ? <TierBadge tier={earnedTier} small />
-          : <Text style={{ fontFamily: FontFamily.uiRegular, fontSize: 10, color: C.textTertiary }}>
-              {cat.currentValue === null ? 'Not started' : 'No tier yet'}
-            </Text>
-        }
-
-        {/* Row 3: thin progress bar */}
-        {nextTier && cat.currentValue !== null && (
-          <ProgBar pct={pct} color={ts.bar} />
-        )}
+        {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
       </View>
     </TouchableOpacity>
   );
 }
 
-// Popup: tapped card stays & lights up, tiers float out above/below
+// In-tree overlay: only dimmer + tier rows — no Modal, nothing drawn over the card itself
 const ROW_H    = 42;
 const ROW_GAP  = 6;
 const ROW_STEP = ROW_H + ROW_GAP;
 
-function MilestonePopup({ cat, layout, onClose, C }: {
+function MilestoneTiersOverlay({ cat, layout, onClose }: {
   cat: MilestoneCategory;
   layout: MilestoneLayout;
   onClose: () => void;
-  C: ColorPalette;
 }) {
   const earnedIdx   = getEarnedTierIndex(cat);
   const earnedTiers = cat.tiers.slice(0, earnedIdx + 1);
   const futureTiers = cat.tiers.slice(earnedIdx + 1);
-  const earnedTier  = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
-  const ts = earnedTier
-    ? TIER_STYLES[earnedTier]
-    : futureTiers[0] ? TIER_STYLES[futureTiers[0].name]
-    : NO_TIER;
 
   const anims = useRef(cat.tiers.map(() => ({ opacity: new Animated.Value(0), translate: new Animated.Value(0) }))).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
-  const cardGlow     = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(backdropAnim, { toValue: 1, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-      Animated.timing(cardGlow,     { toValue: 1, duration: 180, useNativeDriver: true }),
-    ]).start();
+    Animated.timing(backdropAnim, { toValue: 1, duration: 220, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
 
     const all: Animated.CompositeAnimation[] = [];
 
@@ -368,26 +346,29 @@ function MilestonePopup({ cat, layout, onClose, C }: {
   const dismiss = () => {
     Animated.parallel([
       Animated.timing(backdropAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
-      Animated.timing(cardGlow,     { toValue: 0, duration: 160, useNativeDriver: true }),
       ...cat.tiers.map((_: MilestoneTier, i: number) => Animated.timing(anims[i].opacity, { toValue: 0, duration: 120, useNativeDriver: true })),
     ]).start(onClose);
   };
 
-  return (
-    <Modal transparent animationType="none" visible statusBarTranslucent onRequestClose={dismiss}>
+  const dim = 'rgba(6,14,15,0.72)';
 
-      {/* Dark backdrop */}
+  return (
+    <View style={[StyleSheet.absoluteFillObject, { zIndex: 20 }]} pointerEvents="box-none">
       <TouchableWithoutFeedback onPress={dismiss}>
-        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(6,14,15,0.72)', opacity: backdropAnim }} />
+        <View style={StyleSheet.absoluteFillObject}>
+          <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: layout.y, backgroundColor: dim, opacity: backdropAnim }} />
+          <Animated.View style={{ position: 'absolute', top: layout.y + layout.height, left: 0, right: 0, bottom: 0, backgroundColor: dim, opacity: backdropAnim }} />
+          <Animated.View style={{ position: 'absolute', top: layout.y, left: 0, width: layout.x, height: layout.height, backgroundColor: dim, opacity: backdropAnim }} />
+          <Animated.View style={{ position: 'absolute', top: layout.y, left: layout.x + layout.width, right: 0, height: layout.height, backgroundColor: dim, opacity: backdropAnim }} />
+        </View>
       </TouchableWithoutFeedback>
 
-      {/* Achieved tier rows — float UP above card */}
       {earnedTiers.map((tier: MilestoneTier, i: number) => {
         const revI   = earnedTiers.length - 1 - i;
         const rowTop = layout.y - (revI + 1) * ROW_STEP;
         const tts    = TIER_STYLES[tier.name];
         return (
-          <Animated.View key={'e-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, opacity: anims[i].opacity, transform: [{ translateY: anims[i].translate }], backgroundColor: tts.rowBg, borderRadius: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}>
+          <Animated.View key={'e-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, zIndex: 21, opacity: anims[i].opacity, transform: [{ translateY: anims[i].translate }], backgroundColor: tts.rowBg, borderRadius: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}>
             <TierBadge tier={tier.name} small onDark />
             <Text style={{ flex: 1, fontFamily: FontFamily.uiSemiBold, fontSize: 12.5, color: '#fff' }} numberOfLines={1}>{tier.display}</Text>
             <CheckCircle size={14} color="rgba(255,255,255,0.80)" />
@@ -395,33 +376,13 @@ function MilestonePopup({ cat, layout, onClose, C }: {
         );
       })}
 
-      {/* The tapped card — same position, lights up */}
-      <TouchableWithoutFeedback onPress={dismiss}>
-        <Animated.View style={{
-          position: 'absolute', left: layout.x, top: layout.y, width: layout.width, height: layout.height,
-          backgroundColor: cardGlow.interpolate({ inputRange: [0, 1], outputRange: [ts.bg, ts.bgFocus] }),
-          borderRadius: Radius.lg, borderWidth: 2, borderColor: ts.borderFocus,
-          flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 10,
-        }}>
-          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.30)', alignItems: 'center', justifyContent: 'center' }}>
-            <MilestoneIcon iconKey={cat.iconKey} color={ts.text} size={15} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FontFamily.displayExtraBold, fontSize: 20, color: ts.text, lineHeight: 23 }}>{formatCurrentValue(cat)}</Text>
-            <Text style={{ fontFamily: FontFamily.uiRegular, fontSize: 10, color: ts.text, opacity: 0.65 }}>{cat.label}</Text>
-          </View>
-          {earnedTier && <TierBadge tier={earnedTier} small />}
-        </Animated.View>
-      </TouchableWithoutFeedback>
-
-      {/* Future tier rows — float DOWN below card */}
       {futureTiers.map((tier: MilestoneTier, i: number) => {
         const idx    = earnedIdx + 1 + i;
         const isNext = i === 0;
         const tts    = TIER_STYLES[tier.name];
         const rowTop = layout.y + layout.height + ROW_GAP + i * ROW_STEP;
         return (
-          <Animated.View key={'f-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, opacity: anims[idx].opacity, transform: [{ translateY: anims[idx].translate }], backgroundColor: isNext ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)', borderRadius: 10, borderWidth: 1, borderColor: isNext ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8 }}>
+          <Animated.View key={'f-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, zIndex: 21, opacity: anims[idx].opacity, transform: [{ translateY: anims[idx].translate }], backgroundColor: isNext ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)', borderRadius: 10, borderWidth: 1, borderColor: isNext ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8 }}>
             <View style={{ backgroundColor: isNext ? tts.rowBg : 'rgba(255,255,255,0.08)', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
               <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: isNext ? '#fff' : 'rgba(255,255,255,0.38)' }}>{tier.name}</Text>
             </View>
@@ -430,8 +391,7 @@ function MilestonePopup({ cat, layout, onClose, C }: {
           </Animated.View>
         );
       })}
-
-    </Modal>
+    </View>
   );
 }
 
@@ -637,9 +597,34 @@ function FilterState({ onClose, C }: { onClose: () => void; C: ColorPalette }) {
 
 function GoalsState({ onBack, onCreateGoal, C }: { onBack: () => void; onCreateGoal: () => void; C: ColorPalette }) {
   const [open, setOpen] = useState<{ cat: MilestoneCategory; layout: MilestoneLayout } | null>(null);
+  const goalsRootRef = useRef<View>(null);
+
+  const handleMilestoneOpen = useCallback((cat: MilestoneCategory, win: MilestoneLayout) => {
+    goalsRootRef.current?.measureInWindow((cx: number, cy: number) => {
+      setOpen({
+        cat,
+        layout: {
+          x: win.x - cx,
+          y: win.y - cy,
+          width: win.width,
+          height: win.height,
+        },
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setOpen(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [open]);
+
   return (
-    <>
-      <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} showsVerticalScrollIndicator={false}>
+    <View ref={goalsRootRef} style={{ flex: 1 }} collapsable={false}>
+      <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} showsVerticalScrollIndicator={false} scrollEnabled={open === null}>
         <SectionLabel text="Personal Goals" C={C} />
         <View style={{ gap: Spacing.sm }}>
           {[
@@ -671,7 +656,13 @@ function GoalsState({ onBack, onCreateGoal, C }: { onBack: () => void; onCreateG
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {MOCK_MILESTONES.categories.map(cat => (
             <View key={cat.id} style={{ width: '48.6%' }}>
-              <MilestoneCompactCard cat={cat} onOpen={layout => setOpen({ cat, layout })} C={C} />
+              <MilestoneCompactCard
+                cat={cat}
+                openCatId={open?.cat.id ?? null}
+                onOpen={wl => handleMilestoneOpen(cat, wl)}
+                onClose={() => setOpen(null)}
+                C={C}
+              />
             </View>
           ))}
         </View>
@@ -680,8 +671,8 @@ function GoalsState({ onBack, onCreateGoal, C }: { onBack: () => void; onCreateG
         <View style={{ height: Spacing.xl }} />
       </ScrollView>
 
-      {open && <MilestonePopup cat={open.cat} layout={open.layout} onClose={() => setOpen(null)} C={C} />}
-    </>
+      {open && <MilestoneTiersOverlay cat={open.cat} layout={open.layout} onClose={() => setOpen(null)} />}
+    </View>
   );
 }
 
@@ -770,7 +761,19 @@ export default function ProfileScreen() {
       )}
 
       {state !== 'search' && (
-        <View style={{ height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.bg }}>
+        <View
+          style={{
+            height: 54,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: Spacing.md,
+            backgroundColor: C.bg,
+            borderBottomLeftRadius: Radius.lg,
+            borderBottomRightRadius: Radius.lg,
+            ...Shadow.card,
+          }}
+        >
           {cfg.showBack && navBackTarget != null ? <BackButton onPress={() => setState(navBackTarget)} C={C} /> : <View style={{ width: 36 }} />}
           <Text style={{ fontFamily: FontFamily.displayBold, fontSize: 18, color: C.textPrimary }}>{cfg.title}</Text>
           {cfg.showClose && navBackTarget != null ? <CloseButton onPress={() => setState(navBackTarget)} C={C} /> : <View style={{ width: 36 }} />}

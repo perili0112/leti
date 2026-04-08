@@ -9,7 +9,7 @@ import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-
 import * as NavigationBar from 'expo-navigation-bar';
 import { Sparkles, Calendar, Home, User, Settings } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { FontFamily } from '../../constants/theme';
+import { FontFamily, Radius } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
 
 const TABS: Array<{ name: string; title: string; Icon: LucideIcon }> = [
@@ -68,9 +68,15 @@ export default function TabLayout() {
 
           tabBarStyle: {
             backgroundColor: colors.card,
-            borderTopColor:  colors.border,
-            borderTopWidth: 1,
-            paddingTop:      8,
+            borderTopWidth: 0,
+            paddingTop: 8,
+            borderTopLeftRadius: Radius.lg,
+            borderTopRightRadius: Radius.lg,
+            shadowColor: '#0A1A1B',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 12,
           },
 
           tabBarLabelStyle: {
