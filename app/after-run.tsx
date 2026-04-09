@@ -13,7 +13,7 @@
 //   ⑦ Goals progress           — dashed border card
 //   ⑧ Ask Leti input bar
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   TextInput,
   StyleSheet,
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
@@ -34,11 +35,11 @@ import Svg, {
   Defs, Pattern, Rect, Path, Polyline, Circle,
   Text as SvgText,
 } from 'react-native-svg';
-import { FontFamily, Spacing, Radius, type ColorPalette } from '../constants/theme';
+import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../constants/ThemeContext';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../constants/ThemeContext';
-import { PaceChartTowers, PaceKm } from './components/PaceChart';
-import { LetiMark } from './components/LetiLogo';
+import { PaceChartTowers, PaceKm } from './_components/PaceChart';
+import { LetiMark } from './_components/LetiLogo';
 
 // ─────────────────────────────────────────────────────────────
 // PACE DATA — 10 km run, plan pace 5:00/km
@@ -65,7 +66,7 @@ const AFTER_RUN_PLAN_PACE = '5:00/km';
 // ROUTE MAP SVG
 // ─────────────────────────────────────────────────────────────
 
-function RouteMap({ C }: { C: ColorPalette }) {
+function RouteMap() {
   const { width: screenWidth } = useWindowDimensions();
   const W = screenWidth - 36 - 2;
   const H = 190;
@@ -76,7 +77,7 @@ function RouteMap({ C }: { C: ColorPalette }) {
           <Path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(27,108,112,0.07)" strokeWidth="0.8" />
         </Pattern>
       </Defs>
-      <Rect width="357" height="190" fill={C.primaryFaint} />
+      <Rect width="357" height="190" fill="#EAF0EE" />
       <Rect width="357" height="190" fill="url(#mapgrid)" />
       {[
         [2,4,60,46],[70,4,68,46],[146,4,58,46],[212,4,58,46],[278,4,76,46],
@@ -86,13 +87,13 @@ function RouteMap({ C }: { C: ColorPalette }) {
         <Rect key={i} x={x} y={y} width={w} height={h} fill="rgba(255,255,255,0.55)" rx="2" />
       ))}
       <Polyline points="32,162 32,58 104,58 104,4 174,4 174,58 242,58 242,112 174,112 104,112"
-        fill="none" stroke={C.primary} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        fill="none" stroke="#1B6C70" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
       <Polyline points="104,112 32,112 32,162"
-        fill="none" stroke={C.primary} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="32" cy="162" r="9" fill={C.bg} stroke={C.primary} strokeWidth="2" />
-      <Circle cx="32" cy="162" r="3.5" fill={C.primary} />
-      <Circle cx="32" cy="162" r="14" fill="none" stroke={C.primary} strokeWidth="1.5" strokeDasharray="3,3" opacity="0.5" />
-      <SvgText x="46" y="166" fill={C.primary} fontSize="9.5" fontWeight="600">Start</SvgText>
+        fill="none" stroke="#1B6C70" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="32" cy="162" r="9" fill="#F3F0E9" stroke="#1B6C70" strokeWidth="2" />
+      <Circle cx="32" cy="162" r="3.5" fill="#1B6C70" />
+      <Circle cx="32" cy="162" r="14" fill="none" stroke="#1B6C70" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.5" />
+      <SvgText x="46" y="166" fill="#1B6C70" fontSize="9.5" fontWeight="600">Start</SvgText>
       <Rect x="267" y="160" width="84" height="22" rx="4" fill="rgba(10,26,27,0.72)" />
       <SvgText x="309" y="175" fill="#fff" fontSize="10" fontWeight="600" textAnchor="middle">10.02 km</SvgText>
     </Svg>
@@ -121,6 +122,64 @@ function LetiChatBubble() {
         <Text style={b.body}>
           48:22 — 1 minute 38 seconds under your previous best. Your km 1–5 were textbook: steady, controlled, exactly on plan.
         </Text>
+      </View>
+    </View>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// GOALS CARD — animated progress bar on scroll into view
+// ─────────────────────────────────────────────────────────────
+
+function GoalsCard({ s, distUnit, C }: { s: any; distUnit: any; C: any }) {
+  const prevPct = 58;  // what it was before this run
+  const newPct  = 68;  // what it is now
+
+  // Start from 0 so the fill-in is always visible regardless of scroll position
+  const barAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Small delay so the card has rendered and the user can see the start state
+    const timer = setTimeout(() => {
+      Animated.timing(barAnim, {
+        toValue: newPct,
+        duration: 900,
+        useNativeDriver: false,
+      }).start();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const barWidth = barAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <View style={s.goalsCard}>
+      <View style={{ marginBottom: 4 }}>
+        <View style={s.goalTitleRow}>
+          <Text style={s.goalTitle}>Run 100 km this month</Text>
+          <Text style={s.goalPercent}>{newPct}%</Text>
+        </View>
+        <View style={s.progressTrack}>
+          <Animated.View style={[s.progressFill, { width: barWidth }]} />
+        </View>
+        <Text style={s.goalSubtext}>{fmtDist(68.0, distUnit)} {distLabel(distUnit)} of {fmtDist(100, distUnit)} {distLabel(distUnit)} · {fmtDist(32, distUnit)} {distLabel(distUnit)} remaining</Text>
+      </View>
+      <View style={s.goalAchievedCard}>
+        <View style={s.goalAchievedBadge}>
+          <Check size={14} color="#fff" />
+        </View>
+        <View>
+          <Text style={s.goalAchievedTitle}>Sub-48 min 10K</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Check size={11} color={C.success} />
+            <Text style={s.goalAchievedSub}>Goal achieved this run!</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -249,14 +308,14 @@ export default function AfterRunScreen() {
               <Text style={s.titleHint}>Auto-generated · tap to rename</Text>
             </View>
             <TouchableOpacity style={s.editBtn} onPress={() => setEditingTitle(true)} activeOpacity={0.7}>
-              <Pencil size={15} color={C.textSecondary} />
+              <Pencil size={15} color="#4C6B6C" />
             </TouchableOpacity>
           </View>
 
           {/* ④ ROUTE MAP */}
           <Text style={s.sectionLabel}>Route</Text>
           <View style={[s.card, { overflow: 'hidden', padding: 0 }]}>
-            <RouteMap C={C} />
+            <RouteMap />
           </View>
 
           {/* ⑤ PACE TOWERS */}
@@ -284,28 +343,7 @@ export default function AfterRunScreen() {
 
           {/* ⑦ GOALS PROGRESS */}
           <Text style={s.sectionLabel}>Goals Progress</Text>
-          <View style={s.goalsCard}>
-            <Text style={s.goalsUpdatedLabel}>Updated after this run</Text>
-            <View style={{ marginBottom: 4 }}>
-              <View style={s.goalTitleRow}>
-                <Text style={s.goalTitle}>Run 100 km this month</Text>
-                <Text style={s.goalPercent}>68%</Text>
-              </View>
-              <View style={s.progressTrack}>
-                <View style={[s.progressFill, { width: '68%' }]} />
-              </View>
-              <Text style={s.goalSubtext}>{fmtDist(68.0, distUnit)} {distLabel(distUnit)} of {fmtDist(100, distUnit)} {distLabel(distUnit)} · {fmtDist(32, distUnit)} {distLabel(distUnit)} remaining</Text>
-            </View>
-            <View style={s.goalAchievedCard}>
-              <View style={s.goalAchievedBadge}>
-                <Check size={14} color="#fff" />
-              </View>
-              <View>
-                <Text style={s.goalAchievedTitle}>Sub-48 min 10K</Text>
-                <Text style={s.goalAchievedSub}>✓ Goal achieved this run!</Text>
-              </View>
-            </View>
-          </View>
+          <GoalsCard s={s} distUnit={distUnit} C={C} />
 
           {/* ⑧ ASK LETI */}
           <Text style={[s.sectionLabel, { marginTop: 16 }]}>Ask Leti</Text>
@@ -315,7 +353,7 @@ export default function AfterRunScreen() {
               value={aiInput}
               onChangeText={setAiInput}
               placeholder="Ask Leti anything about this run..."
-              placeholderTextColor={C.textTertiary}
+              placeholderTextColor="#C0BCBA"
               returnKeyType="send"
               onSubmitEditing={handleAiSend}
             />
@@ -324,9 +362,12 @@ export default function AfterRunScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={s.discardRow}>
+          <View style={s.bottomRow}>
             <TouchableOpacity style={s.discardBtn} onPress={handleDiscard} activeOpacity={0.7}>
               <Text style={s.discardBtnText}>Discard Run</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.saveBtnBottom} onPress={handleSaveRun} activeOpacity={0.85}>
+              <Text style={s.saveBtnBottomText}>Save Run</Text>
             </TouchableOpacity>
           </View>
 
@@ -363,7 +404,7 @@ function makeStyles(C: ColorPalette) {
   sectionLabel: {
     fontFamily: FontFamily.uiSemiBold,
     fontSize: 9.5,
-    color: C.textMuted,
+    color: '#91AFAF',
     letterSpacing: 1.3,
     textTransform: 'uppercase',
     marginBottom: 8,
@@ -373,9 +414,9 @@ function makeStyles(C: ColorPalette) {
   card: {
     backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: 'rgba(10,26,27,0.07)',
     borderRadius: 16,
-    shadowColor: C.dark,
+    shadowColor: '#0A1A1B',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -384,49 +425,49 @@ function makeStyles(C: ColorPalette) {
 
   statsCard:      { overflow: 'hidden', padding: 0 },
   statsRow:       { flexDirection: 'row' },
-  statsHeaderRow: { backgroundColor: C.cardAlt },
-  statsCell: { padding: 8, fontSize: 9.5, fontFamily: FontFamily.uiSemiBold, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
+  statsHeaderRow: { backgroundColor: 'rgba(10,26,27,0.03)' },
+  statsCell: { padding: 8, fontSize: 9.5, fontFamily: FontFamily.uiSemiBold, color: '#91AFAF', letterSpacing: 1, textTransform: 'uppercase' },
   statsValueCell: { paddingHorizontal: 12, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
   statsMetricCol:  { width: 110 },
   statsActualCol:  { flex: 1 },
   statsPlannedCol: { flex: 1 },
-  statsHeaderText: { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.textMuted, letterSpacing: 1 },
-  statsMetricLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 13, paddingHorizontal: 12 },
-  statsBorderLeft: { borderLeftWidth: 1, borderLeftColor: C.border },
-  statsBorderTop:  { borderTopWidth: 1,  borderTopColor: C.border },
+  statsHeaderText: { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: '#91AFAF', letterSpacing: 1 },
+  statsMetricLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: '#91AFAF', letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 13, paddingHorizontal: 12 },
+  statsBorderLeft: { borderLeftWidth: 1, borderLeftColor: 'rgba(10,26,27,0.07)' },
+  statsBorderTop:  { borderTopWidth: 1,  borderTopColor:  'rgba(10,26,27,0.06)' },
   statsActualValue:  { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.dark  },
-  statsPlannedValue: { fontFamily: FontFamily.uiRegular,   fontSize: 15, color: C.textMuted    },
+  statsPlannedValue: { fontFamily: FontFamily.uiRegular,   fontSize: 15, color: '#91AFAF'    },
   statsDelta:        { fontFamily: FontFamily.uiSemiBold,  fontSize: 11                      },
   statsDeltaGood:    { color: C.success },
 
   titleCard:  { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   titleText: {
     fontFamily: FontFamily.displayBold, fontSize: 20, color: C.dark, letterSpacing: 0.2,
-    borderBottomWidth: 2, borderBottomColor: C.borderStrong, borderStyle: 'dashed', paddingBottom: 4,
+    borderBottomWidth: 2, borderBottomColor: 'rgba(10,26,27,0.25)', borderStyle: 'dashed', paddingBottom: 4,
   },
   titleInput: {
     fontFamily: FontFamily.displayBold, fontSize: 20, color: C.dark, letterSpacing: 0.2,
     borderBottomWidth: 2, borderBottomColor: C.primary, paddingBottom: 4,
   },
-  titleHint: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textMuted, marginTop: 5 },
-  editBtn:   { width: 36, height: 36, borderWidth: 1.5, borderColor: C.borderMedium, borderRadius: 9, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  titleHint: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: '#91AFAF', marginTop: 5 },
+  editBtn:   { width: 36, height: 36, borderWidth: 1.5, borderColor: 'rgba(10,26,27,0.12)', borderRadius: 9, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
-  aiAnalysisCard:   { padding: 14, backgroundColor: C.primaryFaint, borderColor: 'rgba(27,108,112,0.12)' },
+  aiAnalysisCard:   { padding: 14, backgroundColor: '#EAF3F3', borderColor: 'rgba(27,108,112,0.12)' },
   aiAnalysisHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
   aiSmallAvatar:    { width: 28, height: 28, borderRadius: 14, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   aiAnalysisLabel:  { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.primary, letterSpacing: 1.2, textTransform: 'uppercase' },
   aiAnalysisText:   { fontFamily: FontFamily.uiRegular,  fontSize: 13.5, color: C.dark,    lineHeight: 22, marginBottom: 10 },
   aiAnalysisDanger: { fontFamily: FontFamily.uiMedium,   fontSize: 13.5, color: C.danger,  lineHeight: 22 },
 
-  goalsCard: { borderWidth: 1.5, borderColor: 'rgba(27,108,112,0.25)', borderRadius: 16, padding: 14, backgroundColor: C.primaryFaint, gap: 12 },
-  goalsUpdatedLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 10, color: C.primary, letterSpacing: 1, textTransform: 'uppercase' },
+  goalsCard: { borderWidth: 1.5, borderColor: 'rgba(27,108,112,0.25)', borderRadius: 16, padding: 14, backgroundColor: 'rgba(234,243,243,0.5)', gap: 12 },
+
   goalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   goalTitle:    { fontFamily: FontFamily.uiMedium, fontSize: 13, color: C.dark    },
   goalPercent:  { fontFamily: FontFamily.uiBold,   fontSize: 13, color: C.primary },
-  progressTrack:  { height: 6, backgroundColor: C.border, borderRadius: 3, overflow: 'hidden' },
+  progressTrack:  { height: 6, backgroundColor: 'rgba(10,26,27,0.08)', borderRadius: 3, overflow: 'hidden' },
   progressFill:   { height: 6, backgroundColor: C.primary, borderRadius: 3 },
-  goalSubtext:    { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 4 },
-  goalAchievedCard:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.primaryFaint, borderWidth: 1, borderColor: 'rgba(27,108,112,0.15)', borderRadius: 10, padding: 11 },
+  goalSubtext:    { fontFamily: FontFamily.uiRegular, fontSize: 11, color: '#4C6B6C', marginTop: 4 },
+  goalAchievedCard:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#EAF3F3', borderWidth: 1, borderColor: 'rgba(27,108,112,0.15)', borderRadius: 10, padding: 11 },
   goalAchievedBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.success, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   goalAchievedTitle: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.dark    },
   goalAchievedSub:   { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.success },
@@ -435,11 +476,11 @@ function makeStyles(C: ColorPalette) {
   askInput: {
     flex: 1, height: 50,
     backgroundColor: C.card,
-    borderWidth: 1.5, borderColor: C.borderMedium,
+    borderWidth: 1.5, borderColor: 'rgba(10,26,27,0.1)',
     borderRadius: 25,
     paddingHorizontal: 18,
     fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.dark,
-    shadowColor: C.dark, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+    shadowColor: '#0A1A1B', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
   },
   sendBtn: {
     width: 50, height: 50, borderRadius: 25,
@@ -449,9 +490,11 @@ function makeStyles(C: ColorPalette) {
     flexShrink: 0,
   },
 
-  discardRow: { alignItems: 'flex-end', marginTop: 8, marginBottom: 4 },
-  discardBtn: { height: 32, width: 110, borderRadius: 8, borderWidth: 1, borderColor: C.dangerFaint, backgroundColor: C.dangerFaint, alignItems: 'center', justifyContent: 'center' },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 4, gap: 10 },
+  discardBtn: { height: 40, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(212,71,10,0.25)', backgroundColor: 'rgba(212,71,10,0.06)', alignItems: 'center', justifyContent: 'center' },
   discardBtnText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.danger, letterSpacing: 0.2 },
+  saveBtnBottom: { flex: 1, height: 52, backgroundColor: C.dark, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', ...Shadow.button },
+  saveBtnBottomText: { fontFamily: FontFamily.uiSemiBold, fontSize: 14, color: C.white, letterSpacing: 0.5, textTransform: 'uppercase' },
   });
 }
 
@@ -481,10 +524,10 @@ function makeBubbleStyles(C: ColorPalette) {
     borderRadius: 16,
     borderTopLeftRadius: 4,   // chat bubble corner — message comes from left
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: 'rgba(10,26,27,0.07)',
     padding: 13,
     gap: 4,
-    shadowColor: C.dark,
+    shadowColor: '#0A1A1B',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,

@@ -1,17 +1,14 @@
-// app/(tabs)/index.tsx — Home screen v13
-// Changes from v12:
-//   - Wider vertical gap between scroll sections; more space between next-run distance line and zone
-// Changes from v11:
-//   - Swipe-left on START RUN reveals "Add manually" (PanResponder)
-//   - Single card language: white bg + border only (no shadow) except plan card
-//   - Insight card: same white card treatment as everything else (no teal bg)
-//   - Context line: C.textSecondary instead of C.primary (reduce teal hits)
-//   - Shadow removed from week bar and motiv strip
+// app/(tabs)/index.tsx — Home screen v16
+// Changes from v15:
+//   - Resting state is now two equal circles (teal + gray), not pill + dot
+//   - Stretch only happens during swipe/snap transition
+//   - Replaced Animated.subtract with direct pillWidth interpolation (fixes glitch)
+//   - dotProgress uses timing+easeInOut instead of spring to prevent overshoot artefacts
 
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Animated, useWindowDimensions, PanResponder,
+  Animated, Easing, useWindowDimensions, PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -22,7 +19,7 @@ import {
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../../constants/ThemeContext';
-import { LetiMark } from '../components/LetiLogo';
+import { LetiMark } from '../_components/LetiLogo';
 import {
   MOCK_USER, MOCK_PLAN, MOCK_WEATHER, MOCK_LAST_RUN,
   getGreeting, formatDuration,
@@ -77,7 +74,7 @@ function PlanCardLocked({ C, s }: { C: ColorPalette; s: ReturnType<typeof makeSt
         <Text style={s.lockTitle}>Unlock AI Training Plans</Text>
         <Text style={s.lockSub}>Personalised schedules adapted as you train.</Text>
         <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/plan')} activeOpacity={0.8}>
-          <Text style={s.upgradeBtnText}>See Premium Plans</Text>
+          <Text style={s.upgradeBtnText}>Let's make a plan</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -138,7 +135,7 @@ function PlanCardActive({
   );
 }
 
-// ─── Leti insight card — same card language as everything else ────
+// ─── Leti insight card ────────────────────────────────────────────
 function LetiInsightCard({ C, s }: { C: ColorPalette; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.insightCard}>
@@ -187,7 +184,17 @@ function MotivationStrip({ C, s, height }: {
   );
 }
 
-const SWIPE_PAGE_THRESHOLD = 60;
+// ─── Start Run — two-page carousel ───────────────────────────────
+// Drop-in replacement for the StartRunButton component in index.tsx v16.
+// Fix: activePage moved to a ref so PanResponder never recreates mid-gesture.
+// panResponder only depends on [containerWidth] — stable across page changes.
+
+
+const SWIPE_PAGE_THRESHOLD = 60; 
+const DOT_W             = 6;
+const DOT_GAP           = 8;
+const DOT_CONTAINER_W   = DOT_W + DOT_GAP + DOT_W;
+const RIGHT_DOT_LEFT    = DOT_W + DOT_GAP;
 
 function StartRunButton({ C, s, height }: {
   C: ColorPalette; s: ReturnType<typeof makeStyles>; height: number;
@@ -195,10 +202,53 @@ function StartRunButton({ C, s, height }: {
   const { width: screenW } = useWindowDimensions();
   const containerWidth = Math.max(0, screenW - Spacing.md * 2);
 
-  const swipeX = useRef(new Animated.Value(0)).current;
-  const [activePage, setActivePage] = useState<0 | 1>(0);
-  const panStartXRef = useRef(0);
+  const swipeX      = useRef(new Animated.Value(0)).current;
+  const dotProgress = useRef(new Animated.Value(0)).current;
 
+  // Use a ref for PanResponder logic — avoids recreating on every page change
+  const activePageRef  = useRef<0 | 1>(0);
+  const panStartXRef   = useRef(0);
+
+  // State only drives the dot colour re-render, nothing gesture-related
+  const [activePage, setActivePage] = useState<0 | 1>(0);
+
+  const pillLeft = dotProgress.interpolate({
+    inputRange:  [0, 0.5, 1],
+    outputRange: [0, 0, RIGHT_DOT_LEFT],
+    extrapolate: 'clamp',
+  });
+
+  const pillWidth = dotProgress.interpolate({
+    inputRange:  [0, 0.5, 1],
+    outputRange: [DOT_W, DOT_CONTAINER_W, DOT_W],
+    extrapolate: 'clamp',
+  });
+
+  const animateDot = (toValue: number) =>
+    Animated.timing(dotProgress, {
+      toValue,
+      duration: 320,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
+    });
+
+  const snapTo = useCallback((target: number) => {
+    const newPage = target === 0 ? 0 : 1;
+    // Update ref immediately so the next gesture starts from the correct position
+    activePageRef.current = newPage;
+    Animated.spring(swipeX, {
+      toValue: target,
+      useNativeDriver: true,
+      tension: 180,
+      friction: 22,
+    }).start(({ finished }) => {
+      // Update state only after animation settles — safe to call setState here
+      if (finished) setActivePage(newPage);
+    });
+    animateDot(newPage).start();
+  }, [swipeX, dotProgress]);
+
+  // PanResponder depends only on containerWidth — never recreated for page changes
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -207,58 +257,38 @@ function StartRunButton({ C, s, height }: {
           Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
 
         onPanResponderGrant: () => {
-          const w = containerWidth;
-          panStartXRef.current = activePage === 0 ? 0 : -w;
+          // Read from ref, not state — always current even if state hasn't updated yet
+          panStartXRef.current = activePageRef.current === 0 ? 0 : -containerWidth;
         },
 
         onPanResponderMove: (_, g) => {
-          const w = containerWidth;
-          if (w <= 0) return;
-          const next = Math.max(-w, Math.min(0, panStartXRef.current + g.dx));
+          if (containerWidth <= 0) return;
+          const next = Math.max(-containerWidth, Math.min(0, panStartXRef.current + g.dx));
           swipeX.setValue(next);
+          dotProgress.setValue(Math.max(0, Math.min(1, -next / containerWidth)));
         },
 
         onPanResponderRelease: (_, g) => {
-          const w = containerWidth;
-          if (w <= 0) return;
+          if (containerWidth <= 0) return;
           const current = panStartXRef.current + g.dx;
-          let target = 0;
-          if (activePage === 0) {
-            target = current <= -SWIPE_PAGE_THRESHOLD ? -w : 0;
-          } else {
-            target = current >= -w + SWIPE_PAGE_THRESHOLD ? 0 : -w;
-          }
-          Animated.spring(swipeX, {
-            toValue: target,
-            useNativeDriver: true,
-            tension: 120,
-            friction: 14,
-          }).start(({ finished }) => {
-            if (finished) setActivePage(target === 0 ? 0 : 1);
-          });
+          const target =
+            activePageRef.current === 0
+              ? current <= -SWIPE_PAGE_THRESHOLD ? -containerWidth : 0
+              : current >= -containerWidth + SWIPE_PAGE_THRESHOLD ? 0 : -containerWidth;
+          snapTo(target);
         },
 
         onPanResponderTerminate: (_, g) => {
-          const w = containerWidth;
-          if (w <= 0) return;
+          if (containerWidth <= 0) return;
           const current = panStartXRef.current + g.dx;
-          let target = 0;
-          if (activePage === 0) {
-            target = current <= -SWIPE_PAGE_THRESHOLD ? -w : 0;
-          } else {
-            target = current >= -w + SWIPE_PAGE_THRESHOLD ? 0 : -w;
-          }
-          Animated.spring(swipeX, {
-            toValue: target,
-            useNativeDriver: true,
-            tension: 120,
-            friction: 14,
-          }).start(({ finished }) => {
-            if (finished) setActivePage(target === 0 ? 0 : 1);
-          });
+          const target =
+            activePageRef.current === 0
+              ? current <= -SWIPE_PAGE_THRESHOLD ? -containerWidth : 0
+              : current >= -containerWidth + SWIPE_PAGE_THRESHOLD ? 0 : -containerWidth;
+          snapTo(target);
         },
       }),
-    [containerWidth, activePage],
+    [containerWidth, snapTo], // snapTo is stable (useCallback with no changing deps)
   );
 
   const rowWidth = containerWidth * 2;
@@ -267,15 +297,10 @@ function StartRunButton({ C, s, height }: {
     <View>
       <View style={[s.startCarouselClip, { height, borderRadius: Radius.lg }]}>
         <Animated.View
-          style={[
-            s.startCarouselRow,
-            {
-              width: rowWidth,
-              transform: [{ translateX: swipeX }],
-            },
-          ]}
+          style={[s.startCarouselRow, { width: rowWidth, transform: [{ translateX: swipeX }] }]}
           {...panResponder.panHandlers}
         >
+          {/* Page 1 — START RUN */}
           <View style={{ width: containerWidth, height }}>
             <TouchableOpacity
               style={[s.startBtn, { height, width: containerWidth }]}
@@ -285,38 +310,44 @@ function StartRunButton({ C, s, height }: {
               <Text style={s.startLabel}>START RUN</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Page 2 — ADD MANUALLY */}
           <View style={{ width: containerWidth, height }}>
             <TouchableOpacity
-              style={[s.addManuallyCarouselBtn, { height, width: containerWidth }]}
+              style={[s.addManuallyBtn, { height, width: containerWidth }]}
               onPress={() => router.push('/add-run' as any)}
               activeOpacity={0.92}
             >
-              <Text style={s.addManuallyCarouselTitle}>Add Manually</Text>
-              <Text style={s.addManuallyCarouselSub}>Log a past run</Text>
+              <Text style={s.addManuallyTitle}>ADD MANUALLY</Text>
+              <Text style={s.addManuallySub}>Log a past run</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
       </View>
 
-      <View style={s.startCarouselDots}>
-        <View
-          style={[
-            s.startCarouselDot,
-            activePage === 0 ? s.startCarouselDotActive : s.startCarouselDotInactive,
-          ]}
-        />
-        <View
-          style={[
-            s.startCarouselDot,
-            activePage === 1 ? s.startCarouselDotActive : s.startCarouselDotInactive,
-          ]}
-        />
+      {/* Dot indicator */}
+      <View style={s.dotsContainer}>
+        <View style={{ width: DOT_CONTAINER_W, height: DOT_W, position: 'relative' }}>
+          <View style={[s.dotBg, { left: 0 }]} />
+          <View style={[s.dotBg, { left: RIGHT_DOT_LEFT }]} />
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: pillLeft,
+              width: pillWidth,
+              height: DOT_W,
+              borderRadius: DOT_W / 2,
+              backgroundColor: C.primary,
+            }}
+          />
+        </View>
       </View>
     </View>
   );
 }
 
-// ─── Last Run + Next Run (below START RUN) ───────────────────────
+// ─── Last Run + Next Run ──────────────────────────────────────────
 function LastNextRunRow({
   s, distUnit, screenHeight,
 }: {
@@ -380,16 +411,16 @@ export default function HomeScreen() {
 
   const motivHeight = isSmall ? 46 : 54;
   const startHeight = isSmall ? 72 : 84;
-  const sectionGap = 12;
-  const scrollGapTight = sectionGap - 2;
-  const scrollGapAroundStart = sectionGap + 6;
-
+  const sectionGap = 10;
+  const scrollGapTight = sectionGap - 0;
+  const scrollGapOverStart = sectionGap + 12;
+  const scrollGapUnderStart = sectionGap + 2;
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* ① HEADER */}
-      <View style={[s.header, { paddingVertical: isSmall ? 14 : 20 }]}>
+      <View style={[s.header, { paddingVertical: isSmall ? 6 : 15}]}>
         <View style={{ gap: isSmall ? 10 : 14 }}>
           <Text style={s.wordmark}>Leti</Text>
           <Text style={[s.greeting, { fontSize: isSmall ? 26 : 32 }]}>{greeting}</Text>
@@ -423,12 +454,12 @@ export default function HomeScreen() {
         </View>
 
         {/* ③ MOTIVATION STRIP */}
-        <View style={{ marginBottom: scrollGapAroundStart }}>
+        <View style={{ marginBottom: scrollGapOverStart }}>
           <MotivationStrip C={C} s={s} height={motivHeight} />
         </View>
 
-        {/* ④ START RUN — swipe left to add manually */}
-        <View style={{ marginBottom: scrollGapAroundStart }}>
+        {/* ④ START RUN carousel */}
+        <View style={{ marginBottom: scrollGapUnderStart }}>
           <StartRunButton C={C} s={s} height={startHeight} />
         </View>
 
@@ -452,7 +483,6 @@ function makeStyles(C: ColorPalette) {
     safe:          { flex: 1, backgroundColor: C.bg },
     scrollContent: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xl },
 
-    // Shared card language — white bg, thin border, no shadow (except plan card)
     card: {
       backgroundColor: C.card,
       borderRadius: Radius.lg,
@@ -461,11 +491,7 @@ function makeStyles(C: ColorPalette) {
     },
 
     // ① Header
-    header: {
-      paddingHorizontal: Spacing.xl,
-      borderBottomWidth: 1,
-      borderBottomColor: C.border,
-    },
+    header:      { paddingHorizontal: Spacing.xl, borderBottomWidth: 1, borderBottomColor: C.border },
     wordmark:    { fontFamily: FontFamily.uiSemiBold, fontSize: 8, textTransform: 'uppercase', letterSpacing: 3.5, color: C.textMuted },
     greeting:    { fontFamily: FontFamily.displayBold, color: C.textPrimary, letterSpacing: -0.5, lineHeight: 36 },
     contextLine: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 1 },
@@ -473,7 +499,7 @@ function makeStyles(C: ColorPalette) {
     wxText:      { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textMuted },
     wxDot:       { width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textMuted },
 
-    // ② Plan card — only card that gets a shadow (primary content)
+    // ② Plan card
     planCard:        { backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden', ...Shadow.card },
     planHeaderRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
     planKicker:      { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.textMuted, letterSpacing: 1.5, textTransform: 'uppercase' },
@@ -497,7 +523,7 @@ function makeStyles(C: ColorPalette) {
     upgradeBtn:      { borderWidth: 1.5, borderColor: C.borderStrong, borderRadius: Radius.md, paddingVertical: 9, paddingHorizontal: Spacing.xl },
     upgradeBtnText:  { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textPrimary },
 
-    // ③ Motivation strip — same card language, no shadow
+    // ③ Motivation strip
     motivStrip:   { backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
     motivHalf:    { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },
     motivDivider: { width: 1, backgroundColor: C.border, marginVertical: 8 },
@@ -510,63 +536,30 @@ function makeStyles(C: ColorPalette) {
     goalBarFill:  { height: '100%' as any, backgroundColor: C.primary, borderRadius: 2 },
     goalPct:      { fontFamily: FontFamily.uiRegular, fontSize: 8, color: C.textMuted },
 
-    // ④ Leti insight — same card language as motiv strip
-    insightCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      backgroundColor: C.card,
-      borderRadius: Radius.lg,
-      borderWidth: 1,
-      borderColor: C.border,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-    },
-    insightAvatar: {
-      width: 30, height: 30, borderRadius: 15,
-      backgroundColor: C.primary,
-      alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    },
-    insightText: {
-      flex: 1,
-      fontFamily: FontFamily.uiRegular,
-      fontSize: 12.5,
-      color: C.textSecondary,
-      lineHeight: 19,
-    },
+    // ④ Insight card
+    insightCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingVertical: 12 },
+    insightAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    insightText:   { flex: 1, fontFamily: FontFamily.uiRegular, fontSize: 12.5, color: C.textSecondary, lineHeight: 19 },
 
-    // Last Run + Next Run row
-    lastNextRow:       { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
-    runSummaryCard:    { flex: 1, padding: 13 },
-    runCardKicker:     { fontFamily: FontFamily.uiSemiBold, fontSize: 9, color: C.textMuted, letterSpacing: 1.3, textTransform: 'uppercase' },
-    runCardDistRow:    { flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: 4 },
-    runCardDistNum:    { fontFamily: FontFamily.displayExtraBold, fontSize: 28, color: C.textPrimary },
-    runCardDistUnit:   { fontFamily: FontFamily.displayBold, fontSize: 13, color: C.textSecondary, paddingBottom: 2 },
-    runCardSub:        { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
-    prBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      alignSelf: 'flex-start',
-      marginTop: 6,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-      borderRadius: 4,
-      backgroundColor: C.dark,
-    },
-    prBannerText:      { fontFamily: FontFamily.uiSemiBold, fontSize: 8.5, color: C.white, textTransform: 'uppercase' },
-    nextRunName:       { fontFamily: FontFamily.displayBold, fontSize: 16, color: C.textPrimary, marginTop: 4 },
-    nextRunSub:        { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
-    nextRunEffort:     { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10 },
+    // Last Run + Next Run
+    lastNextRow:     { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.sm },
+    runSummaryCard:  { flex: 1, padding: 13 },
+    runCardKicker:   { fontFamily: FontFamily.uiSemiBold, fontSize: 9, color: C.textMuted, letterSpacing: 1.3, textTransform: 'uppercase' },
+    runCardDistRow:  { flexDirection: 'row', alignItems: 'flex-end', gap: 4, marginTop: 4 },
+    runCardDistNum:  { fontFamily: FontFamily.displayExtraBold, fontSize: 28, color: C.textPrimary },
+    runCardDistUnit: { fontFamily: FontFamily.displayBold, fontSize: 13, color: C.textSecondary, paddingBottom: 2 },
+    runCardSub:      { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
+    prBanner:        { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 4, backgroundColor: C.dark },
+    prBannerText:    { fontFamily: FontFamily.uiSemiBold, fontSize: 8.5, color: C.white, textTransform: 'uppercase' },
+    nextRunName:     { fontFamily: FontFamily.displayBold, fontSize: 16, color: C.textPrimary, marginTop: 4 },
+    nextRunSub:      { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
+    nextRunEffort:   { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10 },
 
-    // ⑤ Start Run — horizontal carousel
-    startCarouselClip: {
-      overflow: 'hidden',
-    },
-    startCarouselRow: {
-      flexDirection: 'row',
-    },
+    // ⑤ Start Run carousel
+    startCarouselClip: { overflow: 'hidden' },
+    startCarouselRow:  { flexDirection: 'row' },
+
+    // Page 1 — START RUN (dark)
     startBtn: {
       backgroundColor: C.dark,
       borderRadius: Radius.lg,
@@ -585,44 +578,45 @@ function makeStyles(C: ColorPalette) {
       letterSpacing: 4,
       textTransform: 'uppercase',
     },
-    addManuallyCarouselBtn: {
-      backgroundColor: C.card,
-      borderWidth: 1.5,
-      borderColor: C.borderStrong,
+
+    // Page 2 — ADD MANUALLY (amber)
+    addManuallyBtn: {
+      backgroundColor: C.accent,
       borderRadius: Radius.lg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    addManuallyCarouselTitle: {
+    addManuallyTitle: {
       fontFamily: FontFamily.displayBold,
       fontSize: 20,
-      color: C.textPrimary,
+      color: C.dark,
+      letterSpacing: 4,
+      textTransform: 'uppercase',
     },
-    addManuallyCarouselSub: {
+    addManuallySub: {
       fontFamily: FontFamily.uiRegular,
       fontSize: 11,
-      color: C.textMuted,
-      marginTop: 2,
+      color: C.dark,
+      opacity: 0.5,
+      marginTop: 4,
+      letterSpacing: 0.2,
     },
-    startCarouselDots: {
+
+    // Dot indicator
+    dotsContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 8,
-      marginTop: 8,
+      marginTop: 9,
     },
-    startCarouselDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 3.5,
-    },
-    startCarouselDotActive: {
-      backgroundColor: C.dark,
-    },
-    startCarouselDotInactive: {
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderColor: C.dark,
+    // Gray background circle — used for both dot positions
+    dotBg: {
+      position: 'absolute',
+      top: 0,
+      width: DOT_W,
+      height: DOT_W,
+      borderRadius: DOT_W / 2,
+      backgroundColor: C.border,
     },
   });
 }

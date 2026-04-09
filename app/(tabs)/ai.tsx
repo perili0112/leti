@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { X, Clock, Plus, Send } from 'lucide-react-native';
 import { FontFamily, Spacing, Radius, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
-import { LetiMark } from '../components/LetiLogo';
+import { LetiMark } from '../_components/LetiLogo';
 
 type Message  = { id: string; role: 'user' | 'ai'; text: string; time: string };
 type ChatItem = { id: string; title: string; date: string; starred: boolean; unread?: boolean; trash?: boolean; trashExpiry?: string };

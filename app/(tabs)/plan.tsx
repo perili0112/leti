@@ -21,7 +21,7 @@ import { Calendar, Send, ArrowLeft, Check } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { type ColorPalette, FontFamily, Spacing, Radius, Shadow } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
-import { LetiMark } from '../components/LetiLogo';
+import { LetiMark } from '../_components/LetiLogo';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES

@@ -26,8 +26,8 @@ import Svg, { Rect, Polyline, Circle, Text as SvgText } from 'react-native-svg';
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../constants/ThemeContext';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../constants/ThemeContext';
-import { PaceChartTowers, PaceKm } from './components/PaceChart';
-import { LetiMark } from './components/LetiLogo';
+import { PaceChartTowers, PaceKm } from './_components/PaceChart';
+import { LetiMark } from './_components/LetiLogo';
 
 // ─────────────────────────────────────────────────────────────
 // MOCK DATA
