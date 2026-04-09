@@ -357,6 +357,8 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
   const dim = 'rgba(6,14,15,0.72)';
   const earnedTier = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
   const focusBorder = earnedTier ? TIER_STYLES[earnedTier].borderFocus : 'rgba(255,255,255,0.22)';
+  const ts = earnedTier ? TIER_STYLES[earnedTier] : NO_TIER;
+  const cardBg = earnedTier ? ts.bgFocus : 'rgba(27,108,112,0.18)';
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={dismiss}>
@@ -366,7 +368,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Rounded focus highlight so the selected card stands out (no sharp rectangle cutout) */}
+      {/* Re-render the selected card ABOVE the dimmer so it isn't dimmed */}
       <View
         pointerEvents="none"
         style={{
@@ -376,16 +378,28 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
           width: layout.width,
           height: layout.height,
           borderRadius: Radius.lg,
+          backgroundColor: cardBg,
           borderWidth: 1.5,
           borderColor: focusBorder,
-          backgroundColor: 'rgba(255,255,255,0.04)',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: 0.22,
           shadowRadius: 22,
           elevation: 18,
+          padding: 12,
+          justifyContent: 'space-between',
         }}
-      />
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15, flex: 1 }} numberOfLines={2}>
+            {cat.label}
+          </Text>
+          <Text style={{ fontFamily: FontFamily.displayExtraBold, fontSize: 24, lineHeight: 26, color: earnedTier ? ts.text : C.textMuted, flexShrink: 0, maxWidth: '58%', textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>
+            {formatCurrentValue(cat)}
+          </Text>
+        </View>
+        {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
+      </View>
 
       {earnedTiers.map((tier: MilestoneTier, i: number) => {
         const revI   = earnedTiers.length - 1 - i;
