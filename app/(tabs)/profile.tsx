@@ -368,6 +368,20 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
         </View>
       </TouchableWithoutFeedback>
 
+      {/* Opaque underlay to prevent dimmer bleeding through translucent card bg */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: layout.x,
+          top: layout.y,
+          width: layout.width,
+          height: layout.height,
+          borderRadius: Radius.lg,
+          backgroundColor: C.bg,
+        }}
+      />
+
       {/* Re-render the selected card ABOVE the dimmer so it isn't dimmed */}
       <View
         pointerEvents="none"
