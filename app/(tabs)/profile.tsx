@@ -226,7 +226,7 @@ function TierBadge({ tier, small = false, onDark = false, compact = false }: { t
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: bg, borderWidth: outlined ? 1 : 0, borderColor: onDark ? 'rgba(255,255,255,0.30)' : s.border, borderRadius: 5, paddingHorizontal: small ? 5 : 7, paddingVertical: small ? 2 : 3 }}>
       {tier === 'Legend' && <Star size={7} color={onDark ? '#fff' : s.text} fill={onDark ? '#fff' : s.text} />}
-      <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: small ? 9 : 10.5, color: onDark ? '#fff' : s.text, letterSpacing: 0.2 }}>{tier}</Text>
+      <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: small ? 11 : 12, color: onDark ? '#fff' : s.text, letterSpacing: 0.2 }}>{tier}</Text>
     </View>
   );
 }
@@ -271,23 +271,36 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
           borderRadius: Radius.lg,
           borderWidth: 1,
           borderColor: earnedTier ? (isOpen ? ts.borderFocus : ts.border) : (isOpen ? C.borderStrong : C.border),
-          padding: 12,
-          gap: 8,
+          padding: 10,
+          gap: 5,
           overflow: 'hidden',
           ...(isOpen ? Shadow.card : null),
         }}
       >
-        {/* Row 1: label left, current value right */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15, flex: 1 }} numberOfLines={2}>
-            {cat.label}
-          </Text>
-          <Text style={{ fontFamily: FontFamily.displayExtraBold, fontSize: 24, lineHeight: 26, color: earnedTier ? ts.text : C.textMuted, flexShrink: 0, maxWidth: '58%', textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1, justifyContent: 'center', gap: 4 }}>
+            <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15 }} numberOfLines={2}>
+              {cat.label}
+            </Text>
+            {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
+          </View>
+
+          <Text
+            style={{
+              fontFamily: FontFamily.displayExtraBold,
+              fontSize: 24,
+              lineHeight: 24,
+              color: earnedTier ? ts.text : C.textMuted,
+              flexShrink: 0,
+              maxWidth: '55%',
+              textAlign: 'right',
+            }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {formatCurrentValue(cat)}
           </Text>
         </View>
-
-        {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
       </View>
     </TouchableOpacity>
   );
@@ -400,19 +413,33 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
           shadowOpacity: 0.22,
           shadowRadius: 22,
           elevation: 18,
-          padding: 12,
-          justifyContent: 'space-between',
+          padding: 10,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-          <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15, flex: 1 }} numberOfLines={2}>
-            {cat.label}
-          </Text>
-          <Text style={{ fontFamily: FontFamily.displayExtraBold, fontSize: 24, lineHeight: 26, color: earnedTier ? ts.text : C.textMuted, flexShrink: 0, maxWidth: '58%', textAlign: 'right' }} numberOfLines={1} adjustsFontSizeToFit>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flex: 1, justifyContent: 'center', gap: 4 }}>
+            <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15 }} numberOfLines={2}>
+              {cat.label}
+            </Text>
+            {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
+          </View>
+
+          <Text
+            style={{
+              fontFamily: FontFamily.displayExtraBold,
+              fontSize: 24,
+              lineHeight: 24,
+              color: earnedTier ? ts.text : C.textMuted,
+              flexShrink: 0,
+              maxWidth: '55%',
+              textAlign: 'right',
+            }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {formatCurrentValue(cat)}
           </Text>
         </View>
-        {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
       </View>
 
       {earnedTiers.map((tier: MilestoneTier, i: number) => {
