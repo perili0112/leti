@@ -1,10 +1,10 @@
 // app/(tabs)/profile.tsx — Profile screen, fully theme-aware
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { KeyboardTypeOptions, ViewStyle } from 'react-native';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Platform, Pressable,
-  Alert, Animated, StyleSheet, TouchableWithoutFeedback, Easing, BackHandler,
+  Alert, Animated, StyleSheet, TouchableWithoutFeedback, Easing, BackHandler, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -246,6 +246,7 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
   const earnedIdx  = getEarnedTierIndex(cat);
   const earnedTier = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
   const ts = earnedTier ? TIER_STYLES[earnedTier] : NO_TIER;
+  const isOpen = openCatId === cat.id;
 
   const handlePress = () => {
     if (openCatId === cat.id) {
@@ -257,7 +258,7 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
     });
   };
 
-  const cardBg = earnedTier ? ts.bg : C.primaryFaint;
+  const cardBg = earnedTier ? (isOpen ? ts.bgFocus : ts.bg) : (isOpen ? 'rgba(27,108,112,0.18)' : C.primaryFaint);
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={0.78} style={{ flex: 1 }}>
@@ -269,9 +270,11 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
           backgroundColor: cardBg,
           borderRadius: Radius.lg,
           borderWidth: 1,
-          borderColor: C.border,
+          borderColor: earnedTier ? (isOpen ? ts.borderFocus : ts.border) : (isOpen ? C.borderStrong : C.border),
           padding: 12,
           gap: 8,
+          overflow: 'hidden',
+          ...(isOpen ? Shadow.card : null),
         }}
       >
         {/* Row 1: label left, current value right */}
@@ -290,15 +293,16 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
   );
 }
 
-// In-tree overlay: only dimmer + tier rows — no Modal, nothing drawn over the card itself
+// Full-screen Modal overlay (dims header + tab bar too), plus a rounded "focus" highlight over the tapped card
 const ROW_H    = 42;
 const ROW_GAP  = 6;
 const ROW_STEP = ROW_H + ROW_GAP;
 
-function MilestoneTiersOverlay({ cat, layout, onClose }: {
+function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
   cat: MilestoneCategory;
   layout: MilestoneLayout;
   onClose: () => void;
+  C: ColorPalette;
 }) {
   const earnedIdx   = getEarnedTierIndex(cat);
   const earnedTiers = cat.tiers.slice(0, earnedIdx + 1);
@@ -351,24 +355,44 @@ function MilestoneTiersOverlay({ cat, layout, onClose }: {
   };
 
   const dim = 'rgba(6,14,15,0.72)';
+  const earnedTier = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
+  const focusBorder = earnedTier ? TIER_STYLES[earnedTier].borderFocus : 'rgba(255,255,255,0.22)';
 
   return (
-    <View style={[StyleSheet.absoluteFillObject, { zIndex: 20 }]} pointerEvents="box-none">
+    <Modal visible transparent animationType="fade" onRequestClose={dismiss}>
       <TouchableWithoutFeedback onPress={dismiss}>
-        <View style={StyleSheet.absoluteFillObject}>
-          <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: layout.y, backgroundColor: dim, opacity: backdropAnim }} />
-          <Animated.View style={{ position: 'absolute', top: layout.y + layout.height, left: 0, right: 0, bottom: 0, backgroundColor: dim, opacity: backdropAnim }} />
-          <Animated.View style={{ position: 'absolute', top: layout.y, left: 0, width: layout.x, height: layout.height, backgroundColor: dim, opacity: backdropAnim }} />
-          <Animated.View style={{ position: 'absolute', top: layout.y, left: layout.x + layout.width, right: 0, height: layout.height, backgroundColor: dim, opacity: backdropAnim }} />
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent' }]}>
+          <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: dim, opacity: backdropAnim }]} />
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Rounded focus highlight so the selected card stands out (no sharp rectangle cutout) */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: layout.x,
+          top: layout.y,
+          width: layout.width,
+          height: layout.height,
+          borderRadius: Radius.lg,
+          borderWidth: 1.5,
+          borderColor: focusBorder,
+          backgroundColor: 'rgba(255,255,255,0.04)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.22,
+          shadowRadius: 22,
+          elevation: 18,
+        }}
+      />
 
       {earnedTiers.map((tier: MilestoneTier, i: number) => {
         const revI   = earnedTiers.length - 1 - i;
         const rowTop = layout.y - (revI + 1) * ROW_STEP;
         const tts    = TIER_STYLES[tier.name];
         return (
-          <Animated.View key={'e-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, zIndex: 21, opacity: anims[i].opacity, transform: [{ translateY: anims[i].translate }], backgroundColor: tts.rowBg, borderRadius: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}>
+          <Animated.View key={'e-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, zIndex: 21, opacity: anims[i].opacity, transform: [{ translateY: anims[i].translate }], backgroundColor: tts.rowBg, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, gap: 8 }}>
             <TierBadge tier={tier.name} small onDark />
             <Text style={{ flex: 1, fontFamily: FontFamily.uiSemiBold, fontSize: 12.5, color: '#fff' }} numberOfLines={1}>{tier.display}</Text>
             <CheckCircle size={14} color="rgba(255,255,255,0.80)" />
@@ -382,7 +406,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose }: {
         const tts    = TIER_STYLES[tier.name];
         const rowTop = layout.y + layout.height + ROW_GAP + i * ROW_STEP;
         return (
-          <Animated.View key={'f-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, zIndex: 21, opacity: anims[idx].opacity, transform: [{ translateY: anims[idx].translate }], backgroundColor: isNext ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)', borderRadius: 10, borderWidth: 1, borderColor: isNext ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8 }}>
+          <Animated.View key={'f-' + tier.name} pointerEvents="none" style={{ position: 'absolute', left: layout.x, top: rowTop, width: layout.width, height: ROW_H, zIndex: 21, opacity: anims[idx].opacity, transform: [{ translateY: anims[idx].translate }], backgroundColor: isNext ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: isNext ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, gap: 8 }}>
             <View style={{ backgroundColor: isNext ? tts.rowBg : 'rgba(255,255,255,0.08)', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 }}>
               <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: isNext ? '#fff' : 'rgba(255,255,255,0.38)' }}>{tier.name}</Text>
             </View>
@@ -391,7 +415,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose }: {
           </Animated.View>
         );
       })}
-    </View>
+    </Modal>
   );
 }
 
@@ -597,20 +621,11 @@ function FilterState({ onClose, C }: { onClose: () => void; C: ColorPalette }) {
 
 function GoalsState({ onBack, onCreateGoal, C }: { onBack: () => void; onCreateGoal: () => void; C: ColorPalette }) {
   const [open, setOpen] = useState<{ cat: MilestoneCategory; layout: MilestoneLayout } | null>(null);
-  const goalsRootRef = useRef<View>(null);
 
   const handleMilestoneOpen = useCallback((cat: MilestoneCategory, win: MilestoneLayout) => {
-    goalsRootRef.current?.measureInWindow((cx: number, cy: number) => {
-      setOpen({
-        cat,
-        layout: {
-          x: win.x - cx,
-          y: win.y - cy,
-          width: win.width,
-          height: win.height,
-        },
-      });
-    });
+    // `win` is already in window coordinates from measureInWindow.
+    // Using a Modal for the overlay means we want those absolute coords so the dimmer covers header + tab bar too.
+    setOpen({ cat, layout: win });
   }, []);
 
   useEffect(() => {
@@ -623,7 +638,7 @@ function GoalsState({ onBack, onCreateGoal, C }: { onBack: () => void; onCreateG
   }, [open]);
 
   return (
-    <View ref={goalsRootRef} style={{ flex: 1 }} collapsable={false}>
+    <View style={{ flex: 1 }}>
       <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} showsVerticalScrollIndicator={false} scrollEnabled={open === null}>
         <SectionLabel text="Personal Goals" C={C} />
         <View style={{ gap: Spacing.sm }}>
@@ -671,7 +686,7 @@ function GoalsState({ onBack, onCreateGoal, C }: { onBack: () => void; onCreateG
         <View style={{ height: Spacing.xl }} />
       </ScrollView>
 
-      {open && <MilestoneTiersOverlay cat={open.cat} layout={open.layout} onClose={() => setOpen(null)} />}
+      {open && <MilestoneTiersOverlay cat={open.cat} layout={open.layout} onClose={() => setOpen(null)} C={C} />}
     </View>
   );
 }
