@@ -4,19 +4,20 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { KeyboardTypeOptions, ViewStyle } from 'react-native';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Platform, Pressable,
-  Alert, Animated, StyleSheet, TouchableWithoutFeedback, Easing, BackHandler, Modal,
+  Alert, Animated, StyleSheet, TouchableWithoutFeedback, Easing, BackHandler, Modal, Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   ArrowLeft, X, ChevronRight,
   Pencil, Clock, Search, SlidersHorizontal, Camera,
   Trash2, CheckCircle, Star, Flame, Award, Target, Activity,
-  Zap, TrendingUp, Lock,
+  Zap, TrendingUp, Lock, Info,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
+import { useTabBarInset } from '../../hooks/useTabBarInset';
 import {
   MOCK_MILESTONES,
   type MilestoneCategory,
@@ -90,7 +91,7 @@ function getEarnedTierIndex(cat: MilestoneCategory): number {
 }
 
 function formatCurrentValue(cat: MilestoneCategory): string {
-  if (cat.currentValue === null) return 'none yet';
+  if (cat.currentValue === null) return "0:00";
   if (!cat.higherIsBetter) {
     const s = cat.currentValue;
     const h = Math.floor(s / 3600);
@@ -261,7 +262,7 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
   const cardBg = earnedTier ? (isOpen ? ts.bgFocus : ts.bg) : (isOpen ? 'rgba(27,108,112,0.18)' : C.primaryFaint);
 
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={0.78} style={{ flex: 1 }}>
+    <TouchableOpacity onPress={handlePress} activeOpacity={1} style={{ flex: 1 }}>
       <View
         ref={ref}
         collapsable={false}
@@ -275,6 +276,8 @@ function MilestoneCompactCard({ cat, openCatId, onOpen, onClose, C }: {
           gap: 5,
           overflow: 'hidden',
           ...(isOpen ? Shadow.card : null),
+          // Prevent a brief "old" pressed/dim state flash under the overlay.
+          ...(isOpen ? { opacity: 0 } : null),
         }}
       >
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -317,6 +320,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
   onClose: () => void;
   C: ColorPalette;
 }) {
+  const insets = useSafeAreaInsets();
   const earnedIdx   = getEarnedTierIndex(cat);
   const earnedTiers = cat.tiers.slice(0, earnedIdx + 1);
   const futureTiers = cat.tiers.slice(earnedIdx + 1);
@@ -367,11 +371,44 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
     ]).start(onClose);
   };
 
-  const dim = 'rgba(6,14,15,0.72)';
+  // Slightly lighter backdrop so the UI doesn't feel "greyed out"
+  const dim = 'rgba(6,14,15,0.62)';
   const earnedTier = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
   const focusBorder = earnedTier ? TIER_STYLES[earnedTier].borderFocus : 'rgba(255,255,255,0.22)';
   const ts = earnedTier ? TIER_STYLES[earnedTier] : NO_TIER;
-  const cardBg = earnedTier ? ts.bgFocus : 'rgba(27,108,112,0.18)';
+  const cardTint = earnedTier ? ts.bgFocus : 'rgba(27,108,112,0.18)';
+  const showWeeklyStreakInfo = cat.id === 'weekly_streak';
+  const infoAnimY = backdropAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const infoH = 44;
+  const winH = Dimensions.get('window').height;
+  const safeTop = Math.max(12, insets.top + 8);
+  const safeBottom = Math.max(12, insets.bottom + 8);
+
+  // Weekly streak: position info based on earned tier.
+  // - None/Spark/Stride: pin near the top, above the Spark row (or above the original card if none).
+  // - Surge/Soar: pin to the bottom, under the last "popped" future tier row (Legend).
+  // - Legend: pin under the milestone card (same as before).
+  const earnedTierName: TierName | null = earnedIdx >= 0 ? cat.tiers[earnedIdx].name : null;
+  const bottomOfOriginalCard = layout.y + layout.height;
+  const bottomOfLastFutureRow =
+    futureTiers.length > 0
+      ? (layout.y + layout.height + ROW_GAP + (futureTiers.length - 1) * ROW_STEP + ROW_H)
+      : bottomOfOriginalCard;
+
+  let infoTopUnclamped: number;
+  if (earnedTierName === 'Legend') {
+    infoTopUnclamped = bottomOfOriginalCard + 8;
+  } else if (earnedTierName === 'Surge' || earnedTierName === 'Soar') {
+    infoTopUnclamped = bottomOfLastFutureRow + 8;
+  } else {
+    // None/Spark/Stride
+    const topOfSparkRow = layout.y - (earnedTiers.length > 0 ? earnedTiers.length * ROW_STEP : 0);
+    const anchorTop = earnedTiers.length > 0 ? topOfSparkRow : layout.y;
+    // a touch more breathing room when the info card sits above the stack
+    infoTopUnclamped = anchorTop - 14 - infoH;
+  }
+
+  const infoTop = Math.min(Math.max(safeTop, infoTopUnclamped), winH - safeBottom - infoH);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={dismiss}>
@@ -381,7 +418,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Opaque underlay to prevent dimmer bleeding through translucent card bg */}
+      {/* Opaque underlay to prevent dimmer bleeding through */}
       <View
         pointerEvents="none"
         style={{
@@ -391,7 +428,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
           width: layout.width,
           height: layout.height,
           borderRadius: Radius.lg,
-          backgroundColor: C.bg,
+          backgroundColor: '#FFFFFF',
         }}
       />
 
@@ -405,8 +442,9 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
           width: layout.width,
           height: layout.height,
           borderRadius: Radius.lg,
-          backgroundColor: cardBg,
-          borderWidth: 1.5,
+          // Bright base (opaque) so "selected" is visibly emphasized
+          backgroundColor: '#FFFFFF',
+          borderWidth: 2,
           borderColor: focusBorder,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 10 },
@@ -414,11 +452,15 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
           shadowRadius: 22,
           elevation: 18,
           padding: 10,
+          transform: [{ scale: 1.015 }],
         }}
       >
+        {/* Tier tint + extra brightening to make the selected state "pop" */}
+        <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, borderRadius: Radius.lg, backgroundColor: cardTint, opacity: 0.9 }} />
+        <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, borderRadius: Radius.lg, backgroundColor: 'rgba(255,255,255,0.28)' }} />
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ flex: 1, justifyContent: 'center', gap: 4 }}>
-            <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.textPrimary, lineHeight: 15 }} numberOfLines={2}>
+            <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: '#0A1A1B', lineHeight: 15 }} numberOfLines={2}>
               {cat.label}
             </Text>
             {earnedTier ? <TierBadge tier={earnedTier} small compact /> : null}
@@ -429,7 +471,7 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
               fontFamily: FontFamily.displayExtraBold,
               fontSize: 24,
               lineHeight: 24,
-              color: earnedTier ? ts.text : C.textMuted,
+              color: earnedTier ? ts.text : '#607878',
               flexShrink: 0,
               maxWidth: '55%',
               textAlign: 'right',
@@ -441,6 +483,39 @@ function MilestoneTiersOverlay({ cat, layout, onClose, C }: {
           </Text>
         </View>
       </View>
+
+      {showWeeklyStreakInfo && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: layout.x,
+            top: infoTop,
+            width: layout.width,
+            minHeight: infoH,
+            opacity: backdropAnim,
+            transform: [{ translateY: infoAnimY }],
+            backgroundColor: '#FFFFFF',
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.22,
+            shadowRadius: 22,
+            elevation: 18,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}
+        >
+          <Text style={{ fontFamily: FontFamily.uiSemiBold, fontSize: 12.5, color: '#0A1A1B', flex: 1 }} numberOfLines={2}>
+            At least two runs logged
+          </Text>
+          <Info size={16} color="#0A1A1B" />
+        </Animated.View>
+      )}
 
       {earnedTiers.map((tier: MilestoneTier, i: number) => {
         const revI   = earnedTiers.length - 1 - i;
@@ -505,8 +580,13 @@ function MainState({ onEdit, onSearchFocus, onFilterOpen, onGoals, onRunTap, C }
   onRunTap: (id: string) => void;
   C: ColorPalette;
 }) {
+  const tabBarInset = useTabBarInset();
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md }} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: C.bg }}
+      contentContainerStyle={{ padding: Spacing.lg, gap: Spacing.md, paddingBottom: tabBarInset }}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, padding: Spacing.md }}>
         <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Text style={{ fontFamily: FontFamily.displayBold, fontSize: 24, color: '#fff' }}>{USER.initial}</Text>
