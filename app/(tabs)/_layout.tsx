@@ -48,9 +48,9 @@ export default function TabLayout() {
     NavigationBar.setPositionAsync('relative').catch(() => {});
     NavigationBar.setStyle(isDark ? 'dark' : 'light');
     NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
-    NavigationBar.setBackgroundColorAsync(tabBarBg).catch(() => {});
-    NavigationBar.setBorderColorAsync(tabBarBg).catch(() => {});
-  }, [isDark, tabBarBg]);
+    NavigationBar.setBackgroundColorAsync(colors.bg).catch(() => {});
+    NavigationBar.setBorderColorAsync(colors.bg).catch(() => {});
+  }, [isDark, colors.bg]);
 
   const tabBarStyle = useMemo(
     () => ({
@@ -58,17 +58,14 @@ export default function TabLayout() {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       paddingTop: isDark ? 10 : 8,
-      ...(isDark
-        ? { elevation: 0, shadowOpacity: 0 }
-        : {
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
-            shadowColor: '#0A1A1B',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            elevation: 12,
-          }),
+      borderTopLeftRadius: Radius.lg,
+      borderTopRightRadius: Radius.lg,
+      overflow: 'hidden' as const,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: isDark ? 0.4 : 0.08,
+      shadowRadius: isDark ? 14 : 12,
+      elevation: isDark ? 10 : 12,
     }),
     [isDark, tabBarBg, colors.border],
   );
@@ -89,7 +86,16 @@ export default function TabLayout() {
           tabBarHideOnKeyboard: Platform.OS === 'android',
 
           tabBarBackground: () => (
-            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: tabBarBg }]} />
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: tabBarBg,
+                  borderTopLeftRadius: Radius.lg,
+                  borderTopRightRadius: Radius.lg,
+                },
+              ]}
+            />
           ),
 
           tabBarIcon: ({ focused, color }) => {
