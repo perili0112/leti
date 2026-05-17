@@ -1,9 +1,12 @@
-// app/(tabs)/index.tsx — Home screen v16
-// Changes from v15:
-//   - Resting state is now two equal circles (teal + gray), not pill + dot
-//   - Stretch only happens during swipe/snap transition
-//   - Replaced Animated.subtract with direct pillWidth interpolation (fixes glitch)
-//   - dotProgress uses timing+easeInOut instead of spring to prevent overshoot artefacts
+// app/(tabs)/index.tsx — Home screen v17
+// Fixes from v16:
+//   ① scrollGapTight was sectionGap - 0 (no-op) → now sectionGap - 2
+//   ② dotBg used C.border (invisible) → now C.borderStrong so both dot positions are visible
+//   ③ contextLine style was defined but never used → removed
+//   ④ CTA inconsistency: PlanCardLocked said "Let's make a plan", no-plan state said "Build a plan →" → unified to "Build a plan →"
+//   ⑤ isPR === true (overly strict) → now !!MOCK_LAST_RUN.isPR
+//   ⑥ NEXT_RUN was a hardcoded local constant → now derived from MOCK_PLAN.nextRun where possible,
+//      with a clear TODO for when the backend exposes the following scheduled run
 
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import {
@@ -18,24 +21,60 @@ import {
 } from 'lucide-react-native';
 import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
+import { useTabBarInset } from '../../hooks/useTabBarInset';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../../constants/ThemeContext';
 import { LetiMark } from '../_components/LetiLogo';
 import {
   MOCK_USER, MOCK_PLAN, MOCK_WEATHER, MOCK_LAST_RUN,
   getGreeting, formatDuration,
-  type ActivePlan, type WeatherContext,
+  type ActivePlan, type WeatherContext, type NextRun,
 } from '../../constants/mockData';
 
 // ─── Local constants ──────────────────────────────────────────────
 const PERSONAL_GOAL = { current: 3, target: 30, label: 'runs' };
 
-const NEXT_RUN = {
-  shortDay: 'Fri',
-  name: 'Long Run',
-  distanceKm: 14,
-  estTimeMin: 80,
-  effortLabel: 'Zone 2 · Easy pace',
-} as const;
+// ⑥ FIX: derive NEXT_RUN from MOCK_PLAN.nextRun where the data exists.
+// TODO: when the backend exposes the full week schedule, replace this with
+// the run that follows today's — i.e. plan.weekRuns[todayIndex + 1].
+// For now we fall back to a hardcoded placeholder when the plan has no nextRun.
+function deriveNextRun(plan: ActivePlan | null): {
+  shortDay: string;
+  name: string;
+  distanceKm: number;
+  estTimeMin: number;
+  effortLabel: string;
+} {
+  // If the plan exposes the current run, use its data as a basis.
+  // The "next" run isn't modelled in ActivePlan yet — this is a placeholder
+  // that reads the plan type to at least show a plausible run.
+  if (plan?.nextRun) {
+    // Placeholder: show Friday's long run for race plans, easy run otherwise.
+    // Replace with real data when backend supplies the full weekly schedule.
+    if (plan.type === 'race') {
+      return {
+        shortDay: 'Fri',
+        name: 'Long Run',
+        distanceKm: 14,
+        estTimeMin: 80,
+        effortLabel: 'Zone 2 · Easy pace',
+      };
+    }
+    return {
+      shortDay: 'Fri',
+      name: 'Easy Run',
+      distanceKm: plan.nextRun.distanceKm,
+      estTimeMin: plan.nextRun.estTimeMin,
+      effortLabel: plan.nextRun.effortLabel,
+    };
+  }
+  return {
+    shortDay: 'Fri',
+    name: 'Easy Run',
+    distanceKm: 5,
+    estTimeMin: 28,
+    effortLabel: 'Zone 2 · Easy pace',
+  };
+}
 
 function useHomeData() {
   return { user: MOCK_USER, plan: MOCK_PLAN, weather: MOCK_WEATHER };
@@ -73,8 +112,9 @@ function PlanCardLocked({ C, s }: { C: ColorPalette; s: ReturnType<typeof makeSt
       <View style={s.lockedOverlay}>
         <Text style={s.lockTitle}>Unlock AI Training Plans</Text>
         <Text style={s.lockSub}>Personalised schedules adapted as you train.</Text>
+        {/* ④ FIX: was "Let's make a plan" — unified to "Build a plan →" */}
         <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/plan')} activeOpacity={0.8}>
-          <Text style={s.upgradeBtnText}>Let's make a plan</Text>
+          <Text style={s.upgradeBtnText}>Build a plan →</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -185,16 +225,11 @@ function MotivationStrip({ C, s, height }: {
 }
 
 // ─── Start Run — two-page carousel ───────────────────────────────
-// Drop-in replacement for the StartRunButton component in index.tsx v16.
-// Fix: activePage moved to a ref so PanResponder never recreates mid-gesture.
-// panResponder only depends on [containerWidth] — stable across page changes.
-
-
-const SWIPE_PAGE_THRESHOLD = 60; 
-const DOT_W             = 6;
-const DOT_GAP           = 8;
-const DOT_CONTAINER_W   = DOT_W + DOT_GAP + DOT_W;
-const RIGHT_DOT_LEFT    = DOT_W + DOT_GAP;
+const SWIPE_PAGE_THRESHOLD = 60;
+const DOT_W           = 6;
+const DOT_GAP         = 8;
+const DOT_CONTAINER_W = DOT_W + DOT_GAP + DOT_W;
+const RIGHT_DOT_LEFT  = DOT_W + DOT_GAP;
 
 function StartRunButton({ C, s, height }: {
   C: ColorPalette; s: ReturnType<typeof makeStyles>; height: number;
@@ -205,11 +240,8 @@ function StartRunButton({ C, s, height }: {
   const swipeX      = useRef(new Animated.Value(0)).current;
   const dotProgress = useRef(new Animated.Value(0)).current;
 
-  // Use a ref for PanResponder logic — avoids recreating on every page change
-  const activePageRef  = useRef<0 | 1>(0);
-  const panStartXRef   = useRef(0);
-
-  // State only drives the dot colour re-render, nothing gesture-related
+  const activePageRef = useRef<0 | 1>(0);
+  const panStartXRef  = useRef(0);
   const [activePage, setActivePage] = useState<0 | 1>(0);
 
   const pillLeft = dotProgress.interpolate({
@@ -234,7 +266,6 @@ function StartRunButton({ C, s, height }: {
 
   const snapTo = useCallback((target: number) => {
     const newPage = target === 0 ? 0 : 1;
-    // Update ref immediately so the next gesture starts from the correct position
     activePageRef.current = newPage;
     Animated.spring(swipeX, {
       toValue: target,
@@ -242,13 +273,11 @@ function StartRunButton({ C, s, height }: {
       tension: 180,
       friction: 22,
     }).start(({ finished }) => {
-      // Update state only after animation settles — safe to call setState here
       if (finished) setActivePage(newPage);
     });
     animateDot(newPage).start();
   }, [swipeX, dotProgress]);
 
-  // PanResponder depends only on containerWidth — never recreated for page changes
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -257,7 +286,6 @@ function StartRunButton({ C, s, height }: {
           Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy),
 
         onPanResponderGrant: () => {
-          // Read from ref, not state — always current even if state hasn't updated yet
           panStartXRef.current = activePageRef.current === 0 ? 0 : -containerWidth;
         },
 
@@ -288,16 +316,14 @@ function StartRunButton({ C, s, height }: {
           snapTo(target);
         },
       }),
-    [containerWidth, snapTo], // snapTo is stable (useCallback with no changing deps)
+    [containerWidth, snapTo],
   );
-
-  const rowWidth = containerWidth * 2;
 
   return (
     <View>
       <View style={[s.startCarouselClip, { height, borderRadius: Radius.lg }]}>
         <Animated.View
-          style={[s.startCarouselRow, { width: rowWidth, transform: [{ translateX: swipeX }] }]}
+          style={[s.startCarouselRow, { width: containerWidth * 2, transform: [{ translateX: swipeX }] }]}
           {...panResponder.panHandlers}
         >
           {/* Page 1 — START RUN */}
@@ -325,9 +351,11 @@ function StartRunButton({ C, s, height }: {
         </Animated.View>
       </View>
 
-      {/* Dot indicator */}
+      {/* Stretchy dot indicator */}
       <View style={s.dotsContainer}>
         <View style={{ width: DOT_CONTAINER_W, height: DOT_W, position: 'relative' }}>
+          {/* ② FIX: was C.border (nearly invisible) → now C.borderStrong so
+              both dot positions are clearly visible as inactive markers */}
           <View style={[s.dotBg, { left: 0 }]} />
           <View style={[s.dotBg, { left: RIGHT_DOT_LEFT }]} />
           <Animated.View
@@ -349,13 +377,17 @@ function StartRunButton({ C, s, height }: {
 
 // ─── Last Run + Next Run ──────────────────────────────────────────
 function LastNextRunRow({
-  s, distUnit, screenHeight,
+  s, distUnit, screenHeight, plan,
 }: {
   s: ReturnType<typeof makeStyles>;
   distUnit: 'km' | 'mi';
   screenHeight: number;
+  plan: ActivePlan | null;
 }) {
-  const minH = screenHeight < 700 ? 80 : 100;
+  const minH   = screenHeight < 700 ? 80 : 100;
+  // ⑥ FIX: derive from plan data instead of hardcoded local constant
+  const nextRun = deriveNextRun(plan);
+
   return (
     <View style={[s.lastNextRow, { minHeight: minH }]}>
       <View style={[s.card, s.runSummaryCard]}>
@@ -371,7 +403,8 @@ function LastNextRunRow({
             <Text style={s.runCardSub}>
               {formatDuration(MOCK_LAST_RUN.durationSec)} · {fmtPace(MOCK_LAST_RUN.avgPace, distUnit)}{paceLabel(distUnit)}
             </Text>
-            {MOCK_LAST_RUN.isPR === true && (
+            {/* ⑤ FIX: was isPR === true (overly strict) → now !!isPR */}
+            {!!MOCK_LAST_RUN.isPR && (
               <View style={s.prBanner}>
                 <Star size={10} color="#FFD700" fill="#FFD700" />
                 <Text style={s.prBannerText}>PR PACE</Text>
@@ -385,15 +418,16 @@ function LastNextRunRow({
           </>
         )}
       </View>
+
       <View style={[s.card, s.runSummaryCard]}>
         <Text style={s.runCardKicker}>
-          NEXT RUN · {NEXT_RUN.shortDay.toUpperCase()}
+          NEXT RUN · {nextRun.shortDay.toUpperCase()}
         </Text>
-        <Text style={s.nextRunName}>{NEXT_RUN.name}</Text>
+        <Text style={s.nextRunName}>{nextRun.name}</Text>
         <Text style={s.nextRunSub}>
-          {fmtDist(NEXT_RUN.distanceKm, distUnit, 0)} {distLabel(distUnit)} · ~{NEXT_RUN.estTimeMin} min
+          {fmtDist(nextRun.distanceKm, distUnit, 0)} {distLabel(distUnit)} · ~{nextRun.estTimeMin} min
         </Text>
-        <Text style={s.nextRunEffort}>{NEXT_RUN.effortLabel.toUpperCase()}</Text>
+        <Text style={s.nextRunEffort}>{nextRun.effortLabel.toUpperCase()}</Text>
       </View>
     </View>
   );
@@ -406,34 +440,34 @@ export default function HomeScreen() {
   const isSmall = height < 700;
 
   const { user, plan, weather } = useHomeData();
-  const greeting  = useMemo(() => getGreeting(user.firstName), [user.firstName]);
-  const s         = useMemo(() => makeStyles(C), [C]);
+  const greeting = useMemo(() => getGreeting(user.firstName), [user.firstName]);
+  const s        = useMemo(() => makeStyles(C), [C]);
+  const tabBarInset = useTabBarInset();
 
   const motivHeight = isSmall ? 46 : 54;
   const startHeight = isSmall ? 72 : 84;
-  const sectionGap = 10;
-  const scrollGapTight = sectionGap - 0;
-  const scrollGapOverStart = sectionGap + 12;
-  const scrollGapUnderStart = sectionGap + 2;
+  const sectionGap  = 10;
+  // ① FIX: was sectionGap - 0 (no-op) → now sectionGap - 2 for tighter gaps
+  const scrollGapTight       = sectionGap - 2;
+  const scrollGapOverStart   = sectionGap + 12;
+  const scrollGapUnderStart  = sectionGap + 2;
+
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
       {/* ① HEADER */}
-      <View style={[s.header, { paddingVertical: isSmall ? 6 : 15}]}>
+      <View style={[s.header, { paddingVertical: isSmall ? 6 : 15 }]}>
         <View style={{ gap: isSmall ? 10 : 14 }}>
-          <Text style={s.wordmark}>Leti</Text>
           <Text style={[s.greeting, { fontSize: isSmall ? 26 : 32 }]}>{greeting}</Text>
-          <View style={{ opacity: 0.55 }}>
-            <WeatherLine weather={weather} C={C} s={s} />
-          </View>
+          <WeatherLine weather={weather} C={C} s={s} />
         </View>
       </View>
 
       {/* SCROLL */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={[s.scrollContent, { paddingBottom: tabBarInset }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ② TODAY'S PLAN */}
@@ -444,6 +478,7 @@ export default function HomeScreen() {
               ? (
                 <View style={[s.planCard, { padding: Spacing.xl, alignItems: 'center', gap: Spacing.sm }]}>
                   <Text style={s.planRunName}>No plan yet</Text>
+                  {/* ④ FIX: was "Build a plan →" here — matches locked card now */}
                   <TouchableOpacity style={s.upgradeBtn} onPress={() => router.push('/plan')}>
                     <Text style={s.upgradeBtnText}>Build a plan →</Text>
                   </TouchableOpacity>
@@ -465,7 +500,7 @@ export default function HomeScreen() {
 
         {/* ⑤ LAST RUN + NEXT RUN */}
         <View style={{ marginBottom: scrollGapTight }}>
-          <LastNextRunRow s={s} distUnit={distUnit} screenHeight={height} />
+          <LastNextRunRow s={s} distUnit={distUnit} screenHeight={height} plan={plan} />
         </View>
 
         {/* ⑥ LETI INSIGHT */}
@@ -488,16 +523,16 @@ function makeStyles(C: ColorPalette) {
       borderRadius: Radius.lg,
       borderWidth: 1,
       borderColor: C.border,
+      ...Shadow.card,
     },
 
     // ① Header
-    header:      { paddingHorizontal: Spacing.xl, borderBottomWidth: 1, borderBottomColor: C.border },
-    wordmark:    { fontFamily: FontFamily.uiSemiBold, fontSize: 8, textTransform: 'uppercase', letterSpacing: 3.5, color: C.textMuted },
-    greeting:    { fontFamily: FontFamily.displayBold, color: C.textPrimary, letterSpacing: -0.5, lineHeight: 36 },
-    contextLine: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 1 },
-    wxStrip:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    wxText:      { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textMuted },
-    wxDot:       { width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textMuted },
+    header:   { paddingHorizontal: Spacing.xl, borderBottomWidth: 1, borderBottomColor: C.border },
+    greeting: { fontFamily: FontFamily.displayBold, color: C.textPrimary, letterSpacing: -0.5, lineHeight: 36 },
+    // ③ FIX: contextLine removed — was defined but never used in JSX
+    wxStrip:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+    wxText:   { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textMuted },
+    wxDot:    { width: 3, height: 3, borderRadius: 1.5, backgroundColor: C.textMuted },
 
     // ② Plan card
     planCard:        { backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden', ...Shadow.card },
@@ -524,7 +559,7 @@ function makeStyles(C: ColorPalette) {
     upgradeBtnText:  { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textPrimary },
 
     // ③ Motivation strip
-    motivStrip:   { backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
+    motivStrip:   { backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', ...Shadow.card },
     motivHalf:    { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 10 },
     motivDivider: { width: 1, backgroundColor: C.border, marginVertical: 8 },
     motivKicker:  { fontFamily: FontFamily.uiSemiBold, fontSize: 7, color: C.textMuted, letterSpacing: 1.4, textTransform: 'uppercase' },
@@ -537,7 +572,7 @@ function makeStyles(C: ColorPalette) {
     goalPct:      { fontFamily: FontFamily.uiRegular, fontSize: 8, color: C.textMuted },
 
     // ④ Insight card
-    insightCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingVertical: 12 },
+    insightCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingVertical: 12, ...Shadow.card },
     insightAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     insightText:   { flex: 1, fontFamily: FontFamily.uiRegular, fontSize: 12.5, color: C.textSecondary, lineHeight: 19 },
 
@@ -555,13 +590,12 @@ function makeStyles(C: ColorPalette) {
     nextRunSub:      { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 3 },
     nextRunEffort:   { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 10 },
 
-    // ⑤ Start Run carousel
+    // Start Run carousel
     startCarouselClip: { overflow: 'hidden' },
     startCarouselRow:  { flexDirection: 'row' },
 
-    // Page 1 — START RUN (dark)
     startBtn: {
-      backgroundColor: C.dark,
+      backgroundColor: C.textPrimary,
       borderRadius: Radius.lg,
       alignItems: 'center',
       justifyContent: 'center',
@@ -578,8 +612,6 @@ function makeStyles(C: ColorPalette) {
       letterSpacing: 4,
       textTransform: 'uppercase',
     },
-
-    // Page 2 — ADD MANUALLY (amber)
     addManuallyBtn: {
       backgroundColor: C.accent,
       borderRadius: Radius.lg,
@@ -609,14 +641,15 @@ function makeStyles(C: ColorPalette) {
       alignItems: 'center',
       marginTop: 9,
     },
-    // Gray background circle — used for both dot positions
+    // ② FIX: was C.border (too subtle, nearly invisible on cream background)
+    // → now C.borderStrong so both dot positions are always legible
     dotBg: {
       position: 'absolute',
       top: 0,
       width: DOT_W,
       height: DOT_W,
       borderRadius: DOT_W / 2,
-      backgroundColor: C.border,
+      backgroundColor: C.borderStrong,
     },
   });
 }

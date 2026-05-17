@@ -21,6 +21,7 @@ import { Calendar, Send, ArrowLeft, Check } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { type ColorPalette, FontFamily, Spacing, Radius, Shadow } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
+import { useTabBarInset } from '../../hooks/useTabBarInset';
 import { LetiMark } from '../_components/LetiLogo';
 
 // ─────────────────────────────────────────────────────────────
@@ -427,8 +428,9 @@ function EmptyState({ onBuild }: { onBuild: () => void }) {
 function ActiveHobbyState({ onEdit, onNew, onDelete, onSeeFullPlan }: { onEdit: () => void; onNew: () => void; onDelete: () => void; onSeeFullPlan: () => void }) {
   const { colors: C } = useTheme();
   const s = React.useMemo(() => makeSStyles(C), [C]);
+  const tabBarInset = useTabBarInset();
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.activeContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.activeContent, { paddingBottom: tabBarInset }]} showsVerticalScrollIndicator={false}>
       <ProgressBar pct={25} label="Week 3 of 12 · Base Building" value="25%" />
       <Legend />
       <CalendarGrid weeks={HOBBY_WEEKS} />
@@ -448,7 +450,6 @@ function ActiveHobbyState({ onEdit, onNew, onDelete, onSeeFullPlan }: { onEdit: 
       <TouchableOpacity onPress={onDelete} activeOpacity={0.7} style={s.btnDanger}>
         <Text style={s.btnDangerText}>Delete This Plan</Text>
       </TouchableOpacity>
-      <View style={{ height: Spacing.xxl }} />
     </ScrollView>
   );
 }
@@ -458,8 +459,9 @@ function ActiveRaceState({ onEdit, onNew, onDelete, onSeeFullPlan }: { onEdit: (
   const s = React.useMemo(() => makeSStyles(C), [C]);
   const { width } = useWindowDimensions();
   const raceNumSize = width < 360 ? 42 : 56;
+  const tabBarInset = useTabBarInset();
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.activeContent} showsVerticalScrollIndicator={false}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.activeContent, { paddingBottom: tabBarInset }]} showsVerticalScrollIndicator={false}>
       {/* Race countdown */}
       <View style={s.raceCard}>
         <View style={s.raceCountdown}>
@@ -491,7 +493,6 @@ function ActiveRaceState({ onEdit, onNew, onDelete, onSeeFullPlan }: { onEdit: (
       <TouchableOpacity onPress={onDelete} activeOpacity={0.7} style={s.btnDanger}>
         <Text style={s.btnDangerText}>Delete This Plan</Text>
       </TouchableOpacity>
-      <View style={{ height: Spacing.xxl }} />
     </ScrollView>
   );
 }

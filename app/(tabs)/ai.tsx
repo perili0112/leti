@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { X, Clock, Plus, Send } from 'lucide-react-native';
 import { FontFamily, Spacing, Radius, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
+import { useTabBarInset } from '../../hooks/useTabBarInset';
 import { LetiMark } from '../_components/LetiLogo';
 
 type Message  = { id: string; role: 'user' | 'ai'; text: string; time: string };
@@ -107,6 +108,7 @@ export default function AIScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const hasMessages = messages.length > 0;
   const s = useMemo(() => makeStyles(C), [C]);
+  const tabBarInset = useTabBarInset();
 
   const sendMessage = useCallback((text: string) => {
     const trimmed = text.trim();
@@ -146,7 +148,7 @@ export default function AIScreen() {
             <Text style={s.emptyText}>Ask Leti anything about your training.</Text>
           </View>
         ) : (
-          <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={s.messagesContent} showsVerticalScrollIndicator={false} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+          <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[s.messagesContent, { paddingBottom: tabBarInset }]} showsVerticalScrollIndicator={false} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
             {messages.map(msg => (
               <View key={msg.id} style={[s.bubble, msg.role === 'user' ? s.bubbleUser : s.bubbleAI]}>
                 {msg.role === 'ai' && <View style={s.aiAvatarSmall}><LetiMark size={14} variant="white" /></View>}

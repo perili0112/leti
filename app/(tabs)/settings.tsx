@@ -4,13 +4,14 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Linking,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert, Linking, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, Clock } from 'lucide-react-native';
 import { FontFamily, Spacing, Radius, type ColorPalette } from '../../constants/theme';
 import { useTheme, type ThemeMode, type DistUnit } from '../../constants/ThemeContext';
+import { useTabBarInset } from '../../hooks/useTabBarInset';
 
 // ─────────────────────────────────────────────────────────────
 // SHARED PRIMITIVES (all accept C for themed colors)
@@ -104,6 +105,158 @@ function NavRow({ label, value, onPress, C }: { label: string; value?: string; o
 }
 
 // ─────────────────────────────────────────────────────────────
+// TIME PICKER MODAL
+// ─────────────────────────────────────────────────────────────
+
+function pad(n: number) { return n.toString().padStart(2, '0'); }
+
+function TimePickerModal({
+  visible, hour, minute, ampm, onConfirm, onDismiss, C,
+}: {
+  visible: boolean;
+  hour: number;
+  minute: number;
+  ampm: 'AM' | 'PM';
+  onConfirm: (h: number, m: number, ap: 'AM' | 'PM') => void;
+  onDismiss: () => void;
+  C: ColorPalette;
+}) {
+  const [h, setH] = useState(hour);
+  const [m, setM] = useState(minute);
+  const [ap, setAp] = useState<'AM' | 'PM'>(ampm);
+
+  // keep local state in sync when modal re-opens
+  React.useEffect(() => {
+    if (visible) { setH(hour); setM(minute); setAp(ampm); }
+  }, [visible]);
+
+  function stepHour(dir: 1 | -1) {
+    setH(prev => { const next = prev + dir; return next < 1 ? 12 : next > 12 ? 1 : next; });
+  }
+  function stepMinute(dir: 1 | -1) {
+    setM(prev => { const next = prev + dir; return next < 0 ? 59 : next > 59 ? 0 : next; });
+  }
+
+  const s = useMemo(() => StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+    sheet: {
+      backgroundColor: C.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 12,
+      paddingBottom: 34,
+      paddingHorizontal: Spacing.xl,
+    },
+    handle: {
+      width: 36, height: 4, borderRadius: 2,
+      backgroundColor: C.border, alignSelf: 'center', marginBottom: 20,
+    },
+    sheetTitle: {
+      fontFamily: FontFamily.uiSemiBold, fontSize: 13,
+      color: C.textMuted, letterSpacing: 1.2, textTransform: 'uppercase',
+      textAlign: 'center', marginBottom: 24,
+    },
+    pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    column: { alignItems: 'center', gap: 6 },
+    digitBox: {
+      width: 72, height: 56, borderRadius: Radius.sm,
+      backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    digitText: { fontFamily: FontFamily.displayBold, fontSize: 30, color: C.textPrimary },
+    arrow: {
+      width: 72, height: 36, borderRadius: Radius.sm,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    arrowText: { fontFamily: FontFamily.uiMedium, fontSize: 20, color: C.primary },
+    colon: { fontFamily: FontFamily.displayBold, fontSize: 30, color: C.textMuted, marginBottom: 2 },
+    ampmCol: { alignItems: 'center', gap: 4, marginLeft: 8 },
+    ampmBtn: {
+      width: 52, height: 40, borderRadius: Radius.sm, borderWidth: 1.5,
+      borderColor: C.border, alignItems: 'center', justifyContent: 'center',
+    },
+    ampmBtnActive: { backgroundColor: C.primary, borderColor: C.primary },
+    ampmText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textSecondary },
+    ampmTextActive: { color: '#fff' },
+    btnRow: { flexDirection: 'row', gap: 12, marginTop: 28 },
+    btn: {
+      flex: 1, height: 50, borderRadius: Radius.sm,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: C.border,
+    },
+    btnPrimary: { backgroundColor: C.primary, borderColor: C.primary },
+    btnText: { fontFamily: FontFamily.uiSemiBold, fontSize: 15, color: C.textSecondary },
+    btnTextPrimary: { color: '#fff' },
+  }), [C]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+      <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onDismiss}>
+        <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            <Text style={s.sheetTitle}>Reminder Time</Text>
+
+            <View style={s.pickerRow}>
+              {/* Hours */}
+              <View style={s.column}>
+                <TouchableOpacity style={s.arrow} onPress={() => stepHour(1)} activeOpacity={0.7}>
+                  <Text style={s.arrowText}>▲</Text>
+                </TouchableOpacity>
+                <View style={s.digitBox}>
+                  <Text style={s.digitText}>{pad(h)}</Text>
+                </View>
+                <TouchableOpacity style={s.arrow} onPress={() => stepHour(-1)} activeOpacity={0.7}>
+                  <Text style={s.arrowText}>▼</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={s.colon}>:</Text>
+
+              {/* Minutes */}
+              <View style={s.column}>
+                <TouchableOpacity style={s.arrow} onPress={() => stepMinute(1)} activeOpacity={0.7}>
+                  <Text style={s.arrowText}>▲</Text>
+                </TouchableOpacity>
+                <View style={s.digitBox}>
+                  <Text style={s.digitText}>{pad(m)}</Text>
+                </View>
+                <TouchableOpacity style={s.arrow} onPress={() => stepMinute(-1)} activeOpacity={0.7}>
+                  <Text style={s.arrowText}>▼</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* AM / PM */}
+              <View style={s.ampmCol}>
+                {(['AM', 'PM'] as const).map(val => (
+                  <TouchableOpacity
+                    key={val}
+                    style={[s.ampmBtn, ap === val && s.ampmBtnActive]}
+                    onPress={() => setAp(val)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.ampmText, ap === val && s.ampmTextActive]}>{val}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={s.btnRow}>
+              <TouchableOpacity style={s.btn} onPress={onDismiss} activeOpacity={0.7}>
+                <Text style={s.btnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={() => onConfirm(h, m, ap)} activeOpacity={0.7}>
+                <Text style={[s.btnText, s.btnTextPrimary]}>Set Time</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // SETTINGS SCREEN
 // ─────────────────────────────────────────────────────────────
 
@@ -116,10 +269,11 @@ export default function SettingsScreen() {
 
   // Audio
   const [coachingCues,  setCoachingCues]  = useState(true);
+  const [audioHints,    setAudioHints]    = useState(true);
   const [metronome,     setMetronome]     = useState(false);
   const [volume,        setVolume]        = useState(1); // 0=Low 1=Med 2=High
 
-  // Units — pace is derived automatically from distUnit, never set independently
+  // Units
   const [weightUnit,    setWeightUnit]    = useState(0); // 0=kg 1=lb
 
   // Notifications
@@ -127,7 +281,16 @@ export default function SettingsScreen() {
   const [aiMessages,    setAiMessages]    = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
 
+  // Run reminder time
+  const [reminderHour,   setReminderHour]   = useState(7);
+  const [reminderMinute, setReminderMinute] = useState(0);
+  const [reminderAmPm,   setReminderAmPm]   = useState<'AM' | 'PM'>('AM');
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
+
+  const reminderTimeLabel = `${pad(reminderHour)}:${pad(reminderMinute)} ${reminderAmPm}`;
+
   const s = useMemo(() => makeStyles(C), [C]);
+  const tabBarInset = useTabBarInset();
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -137,7 +300,11 @@ export default function SettingsScreen() {
         <Text style={s.title}>Settings</Text>
       </View>
 
-      <ScrollView style={{ flex: 1, backgroundColor: C.bg }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: C.bg }}
+        contentContainerStyle={{ paddingBottom: tabBarInset }}
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* ── APPEARANCE ── */}
         <SectionHeader label="Appearance" C={C} />
@@ -167,6 +334,11 @@ export default function SettingsScreen() {
           </Row>
           <RowDivider C={C} />
           <Row C={C}>
+            <RowLabel text="Audio Cues" sub="Little audio cues to help you stay on track" C={C} />
+            <Toggle value={audioHints} onChange={setAudioHints} C={C} />
+          </Row>
+          <RowDivider C={C} />
+          <Row C={C}>
             <RowLabel text="Metronome" sub="Rhythmic beep to hold your cadence during a run" C={C} />
             <Toggle value={metronome} onChange={setMetronome} C={C} />
           </Row>
@@ -186,15 +358,6 @@ export default function SettingsScreen() {
           </Row>
           <RowDivider C={C} />
           <Row C={C}>
-            <RowLabel
-              text="Pace"
-              sub={`Auto: ${distUnit === 'km' ? 'min/km' : 'min/mi'} — follows distance`}
-              C={C}
-            />
-            <RowValue text={distUnit === 'km' ? 'min/km' : 'min/mi'} C={C} />
-          </Row>
-          <RowDivider C={C} />
-          <Row C={C}>
             <RowLabel text="Weight" C={C} />
             <Seg options={['kg', 'lb']} active={weightUnit} onChange={setWeightUnit} C={C} />
           </Row>
@@ -207,6 +370,26 @@ export default function SettingsScreen() {
             <RowLabel text="Run Reminders" C={C} />
             <Toggle value={runReminders} onChange={setRunReminders} C={C} />
           </Row>
+
+          {/* Reminder time row — only shown while reminders are on */}
+          {runReminders && (
+            <>
+              <RowDivider C={C} />
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl, minHeight: 54, gap: 14, backgroundColor: C.card }}
+                onPress={() => setTimePickerOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Clock size={16} color={C.textMuted} />
+                <RowLabel text="Reminder Time" sub="Tap to change" C={C} />
+                <Text style={{ fontFamily: FontFamily.uiMedium, fontSize: 14, color: C.primary }}>
+                  {reminderTimeLabel}
+                </Text>
+                <ChevronRight size={14} color={C.textTertiary} />
+              </TouchableOpacity>
+            </>
+          )}
+
           <RowDivider C={C} />
           <Row C={C}>
             <RowLabel text="AI Messages" C={C} />
@@ -234,6 +417,22 @@ export default function SettingsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* ── TIME PICKER MODAL ── */}
+      <TimePickerModal
+        visible={timePickerOpen}
+        hour={reminderHour}
+        minute={reminderMinute}
+        ampm={reminderAmPm}
+        onConfirm={(h, m, ap) => {
+          setReminderHour(h);
+          setReminderMinute(m);
+          setReminderAmPm(ap);
+          setTimePickerOpen(false);
+        }}
+        onDismiss={() => setTimePickerOpen(false)}
+        C={C}
+      />
     </SafeAreaView>
   );
 }

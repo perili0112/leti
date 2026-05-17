@@ -54,8 +54,10 @@ export default function TabLayout() {
 
   const tabBarStyle = useMemo(
     () => ({
-      // Transparent shell — rounded surface + corner fill live in tabBarBackground only.
-      // A solid bg + borderRadius here leaves white triangles on iOS/Android.
+      position: 'absolute' as const,
+      left: 0,
+      right: 0,
+      bottom: 0,
       backgroundColor: 'transparent',
       borderTopWidth: 0,
       paddingTop: isDark ? 10 : 8,
@@ -82,31 +84,24 @@ export default function TabLayout() {
           tabBarHideOnKeyboard: Platform.OS === 'android',
 
           tabBarBackground: () => (
-            <View style={StyleSheet.absoluteFillObject}>
-              {/* Fills the curved corner cutouts with app bg (not system white). */}
-              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.bg }]} />
-              <View
-                style={[
-                  StyleSheet.absoluteFillObject,
-                  {
-                    backgroundColor: tabBarBg,
-                    borderTopLeftRadius: Radius.lg,
-                    borderTopRightRadius: Radius.lg,
-                    overflow: 'hidden',
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: colors.border,
-                    ...(Platform.OS === 'ios'
-                      ? {
-                          shadowColor: '#000000',
-                          shadowOffset: { width: 0, height: -4 },
-                          shadowOpacity: isDark ? 0.35 : 0.08,
-                          shadowRadius: 14,
-                        }
-                      : { elevation: isDark ? 8 : 12 }),
-                  },
-                ]}
-              />
-            </View>
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: tabBarBg,
+                  borderTopLeftRadius: Radius.lg,
+                  borderTopRightRadius: Radius.lg,
+                  overflow: 'hidden',
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.border,
+                  shadowColor: '#0A1A1B',
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: isDark ? 0.28 : 0.08,
+                  shadowRadius: 12,
+                  elevation: 12,
+                },
+              ]}
+            />
           ),
 
           tabBarIcon: ({ focused, color }) => {
