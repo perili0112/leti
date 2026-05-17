@@ -4,7 +4,7 @@
 
 import { Tabs } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { Dimensions, Platform, StatusBar, useWindowDimensions } from 'react-native';
+import { Dimensions, Platform, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Sparkles, Calendar, Home, User, Settings } from 'lucide-react-native';
@@ -22,8 +22,11 @@ const TABS: Array<{ name: string; title: string; Icon: LucideIcon }> = [
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { height: windowHeight } = useWindowDimensions();
+
+  const tabBarBg = isDark ? colors.cardAlt : colors.card;
+  const tabBarInactive = isDark ? colors.textSecondary : colors.textMuted;
 
   // Android (RN 0.81 + Expo): edge-to-edge is on by default; safe-area bottom can be 0 while
   // the 3-button nav still overlaps. Merge hook + splash metrics + window/screen gap, then 48dp fallback.
@@ -43,7 +46,32 @@ export default function TabLayout() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     NavigationBar.setPositionAsync('relative').catch(() => {});
-  }, []);
+    NavigationBar.setStyle(isDark ? 'dark' : 'light');
+    NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
+    NavigationBar.setBackgroundColorAsync(tabBarBg).catch(() => {});
+    NavigationBar.setBorderColorAsync(tabBarBg).catch(() => {});
+  }, [isDark, tabBarBg]);
+
+  const tabBarStyle = useMemo(
+    () => ({
+      backgroundColor: tabBarBg,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingTop: isDark ? 10 : 8,
+      ...(isDark
+        ? { elevation: 0, shadowOpacity: 0 }
+        : {
+            borderTopLeftRadius: Radius.lg,
+            borderTopRightRadius: Radius.lg,
+            shadowColor: '#0A1A1B',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 12,
+          }),
+    }),
+    [isDark, tabBarBg, colors.border],
+  );
 
   return (
     <Tabs
@@ -56,37 +84,36 @@ export default function TabLayout() {
       screenOptions={({ route }) => {
         return {
           headerShown: false,
-          tabBarActiveTintColor:   colors.primary,
-          tabBarInactiveTintColor: colors.textMuted,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: tabBarInactive,
           tabBarHideOnKeyboard: Platform.OS === 'android',
+
+          tabBarBackground: () => (
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: tabBarBg }]} />
+          ),
 
           tabBarIcon: ({ focused, color }) => {
             const tab = TABS.find(t => t.name === route.name);
             const IconComp = tab?.Icon ?? Home;
-            return <IconComp size={22} color={color} strokeWidth={focused ? 2.5 : 1.5} />;
+            return (
+              <IconComp
+                size={isDark ? 24 : 22}
+                color={color}
+                strokeWidth={focused ? 2.5 : 1.75}
+              />
+            );
           },
 
-          tabBarStyle: {
-            backgroundColor: colors.card,
-            borderTopWidth: 0,
-            paddingTop: 8,
-            borderTopLeftRadius: Radius.lg,
-            borderTopRightRadius: Radius.lg,
-            shadowColor: '#0A1A1B',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            elevation: 12,
-          },
+          tabBarStyle,
 
           tabBarLabelStyle: {
             fontFamily: FontFamily.uiMedium,
-            fontSize: 10,
-            letterSpacing: 0.2,
+            fontSize: isDark ? 11 : 10,
+            letterSpacing: isDark ? 0.3 : 0.2,
             marginTop: 2,
           },
 
-          tabBarItemStyle: { gap: 2 },
+          tabBarItemStyle: { gap: isDark ? 4 : 2, paddingVertical: isDark ? 2 : 0 },
         };
       }}
     >
