@@ -54,20 +54,15 @@ export default function TabLayout() {
 
   const tabBarStyle = useMemo(
     () => ({
-      backgroundColor: tabBarBg,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
+      // Transparent shell — rounded surface + corner fill live in tabBarBackground only.
+      // A solid bg + borderRadius here leaves white triangles on iOS/Android.
+      backgroundColor: 'transparent',
+      borderTopWidth: 0,
       paddingTop: isDark ? 10 : 8,
-      borderTopLeftRadius: Radius.lg,
-      borderTopRightRadius: Radius.lg,
-      overflow: 'hidden' as const,
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: isDark ? 0.4 : 0.08,
-      shadowRadius: isDark ? 14 : 12,
-      elevation: isDark ? 10 : 12,
+      elevation: 0,
+      shadowOpacity: 0,
     }),
-    [isDark, tabBarBg, colors.border],
+    [isDark],
   );
 
   return (
@@ -80,22 +75,38 @@ export default function TabLayout() {
       }}
       screenOptions={({ route }) => {
         return {
+          sceneStyle: { backgroundColor: colors.bg },
           headerShown: false,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: tabBarInactive,
           tabBarHideOnKeyboard: Platform.OS === 'android',
 
           tabBarBackground: () => (
-            <View
-              style={[
-                StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: tabBarBg,
-                  borderTopLeftRadius: Radius.lg,
-                  borderTopRightRadius: Radius.lg,
-                },
-              ]}
-            />
+            <View style={StyleSheet.absoluteFillObject}>
+              {/* Fills the curved corner cutouts with app bg (not system white). */}
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.bg }]} />
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  {
+                    backgroundColor: tabBarBg,
+                    borderTopLeftRadius: Radius.lg,
+                    borderTopRightRadius: Radius.lg,
+                    overflow: 'hidden',
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: colors.border,
+                    ...(Platform.OS === 'ios'
+                      ? {
+                          shadowColor: '#000000',
+                          shadowOffset: { width: 0, height: -4 },
+                          shadowOpacity: isDark ? 0.35 : 0.08,
+                          shadowRadius: 14,
+                        }
+                      : { elevation: isDark ? 8 : 12 }),
+                  },
+                ]}
+              />
+            </View>
           ),
 
           tabBarIcon: ({ focused, color }) => {
