@@ -3,10 +3,9 @@
 // Tab order: AI · Plan · Home · Profile · Settings
 
 import { Tabs } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Dimensions, Platform, StatusBar, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as NavigationBar from 'expo-navigation-bar';
 import { Sparkles, Calendar, Home, User, Settings } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { FontFamily, Radius } from '../../constants/theme';
@@ -42,15 +41,6 @@ export default function TabLayout() {
     const merged = Math.max(insets.bottom, initialBottom, fromSizeGap);
     return merged > 0 ? merged : 48;
   }, [insets.bottom, windowHeight]);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    NavigationBar.setPositionAsync('relative').catch(() => {});
-    NavigationBar.setStyle(isDark ? 'dark' : 'light');
-    NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark').catch(() => {});
-    NavigationBar.setBackgroundColorAsync(colors.bg).catch(() => {});
-    NavigationBar.setBorderColorAsync(colors.bg).catch(() => {});
-  }, [isDark, colors.bg]);
 
   const tabBarStyle = useMemo(
     () => ({
