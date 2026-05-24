@@ -50,11 +50,11 @@ export default function TabLayout() {
       bottom: 0,
       backgroundColor: 'transparent',
       borderTopWidth: 0,
-      paddingTop: isDark ? 10 : 8,
+      paddingTop: 8,
       elevation: 0,
       shadowOpacity: 0,
     }),
-    [isDark],
+    [],
   );
 
   return (
@@ -99,7 +99,7 @@ export default function TabLayout() {
             const IconComp = tab?.Icon ?? Home;
             return (
               <IconComp
-                size={isDark ? 24 : 22}
+                size={22}
                 color={color}
                 strokeWidth={focused ? 2.5 : 1.75}
               />
@@ -110,12 +110,12 @@ export default function TabLayout() {
 
           tabBarLabelStyle: {
             fontFamily: FontFamily.uiMedium,
-            fontSize: isDark ? 11 : 10,
-            letterSpacing: isDark ? 0.3 : 0.2,
+            fontSize: 10,
+            letterSpacing: 0.2,
             marginTop: 2,
           },
 
-          tabBarItemStyle: { gap: isDark ? 4 : 2, paddingVertical: isDark ? 2 : 0 },
+          tabBarItemStyle: { gap: 2, paddingVertical: 0 },
         };
       }}
     >
