@@ -222,11 +222,9 @@ export default function AfterRunScreen() {
       {/* ── FIXED DARK HEADER ── */}
       <SafeAreaView style={s.header} edges={['top']}>
         <View style={s.navRow}>
-          <View style={{ width: 90 }} />
+          <View style={s.navSpacer} />
           <Text style={s.navTitle}>After Run</Text>
-          <TouchableOpacity style={s.saveBtn} onPress={handleSaveRun} activeOpacity={0.85}>
-            <Text style={s.saveBtnText}>Save Run</Text>
-          </TouchableOpacity>
+          <View style={s.navSpacer} />
         </View>
       </SafeAreaView>
 
@@ -240,7 +238,7 @@ export default function AfterRunScreen() {
       >
         <ScrollView
           style={{ flex: 1, backgroundColor: C.bg }}
-          contentContainerStyle={s.scrollContent}
+          contentContainerStyle={[s.scrollContent, { paddingBottom: 24 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -308,7 +306,7 @@ export default function AfterRunScreen() {
               <Text style={s.titleHint}>Auto-generated · tap to rename</Text>
             </View>
             <TouchableOpacity style={s.editBtn} onPress={() => setEditingTitle(true)} activeOpacity={0.7}>
-              <Pencil size={15} color="#4C6B6C" />
+              <Pencil size={15} color={C.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -353,7 +351,7 @@ export default function AfterRunScreen() {
               value={aiInput}
               onChangeText={setAiInput}
               placeholder="Ask Leti anything about this run..."
-              placeholderTextColor="#C0BCBA"
+              placeholderTextColor={C.textTertiary}
               returnKeyType="send"
               onSubmitEditing={handleAiSend}
             />
@@ -362,17 +360,17 @@ export default function AfterRunScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={s.bottomRow}>
-            <TouchableOpacity style={s.discardBtn} onPress={handleDiscard} activeOpacity={0.7}>
-              <Text style={s.discardBtnText}>Discard Run</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.saveBtnBottom} onPress={handleSaveRun} activeOpacity={0.85}>
-              <Text style={s.saveBtnBottomText}>Save Run</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ height: 32 }} />
+          <TouchableOpacity style={s.discardBtn} onPress={handleDiscard} activeOpacity={0.7}>
+            <Text style={s.discardBtnText}>Discard Run</Text>
+          </TouchableOpacity>
         </ScrollView>
+
+        {/* ── FIXED BOTTOM SAVE (Strava-style) ── */}
+        <SafeAreaView style={s.saveFooter} edges={['bottom']}>
+          <TouchableOpacity style={s.saveFooterBtn} onPress={handleSaveRun} activeOpacity={0.88}>
+            <Text style={s.saveFooterBtnText}>Save Run</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -392,11 +390,10 @@ function makeStyles(C: ColorPalette) {
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245,245,240,0.08)',
+    borderBottomColor: C.border,
   },
-  navTitle: { fontFamily: FontFamily.displayBold, fontSize: 18, color: '#F5F5F0', letterSpacing: 0.3 },
-  saveBtn:  { height: 32, width: 90, backgroundColor: '#FFFFFF', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  saveBtnText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.dark, letterSpacing: 0.2 },
+  navSpacer: { width: 36 },
+  navTitle: { fontFamily: FontFamily.displayBold, fontSize: 18, color: C.white, letterSpacing: 0.3 },
 
   transition:    { height: 16, backgroundColor: C.bg },
   scrollContent: { paddingHorizontal: 18, paddingTop: 4 },
@@ -404,7 +401,7 @@ function makeStyles(C: ColorPalette) {
   sectionLabel: {
     fontFamily: FontFamily.uiSemiBold,
     fontSize: 9.5,
-    color: '#91AFAF',
+    color: C.textMuted,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
     marginBottom: 8,
@@ -414,9 +411,9 @@ function makeStyles(C: ColorPalette) {
   card: {
     backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: 'rgba(10,26,27,0.07)',
+    borderColor: C.border,
     borderRadius: 16,
-    shadowColor: '#0A1A1B',
+    shadowColor: C.textPrimary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -425,62 +422,62 @@ function makeStyles(C: ColorPalette) {
 
   statsCard:      { overflow: 'hidden', padding: 0 },
   statsRow:       { flexDirection: 'row' },
-  statsHeaderRow: { backgroundColor: 'rgba(10,26,27,0.03)' },
-  statsCell: { padding: 8, fontSize: 9.5, fontFamily: FontFamily.uiSemiBold, color: '#91AFAF', letterSpacing: 1, textTransform: 'uppercase' },
+  statsHeaderRow: { backgroundColor: C.cardAlt },
+  statsCell: { padding: 8, fontSize: 9.5, fontFamily: FontFamily.uiSemiBold, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
   statsValueCell: { paddingHorizontal: 12, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
   statsMetricCol:  { width: 110 },
   statsActualCol:  { flex: 1 },
   statsPlannedCol: { flex: 1 },
-  statsHeaderText: { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: '#91AFAF', letterSpacing: 1 },
-  statsMetricLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: '#91AFAF', letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 13, paddingHorizontal: 12 },
-  statsBorderLeft: { borderLeftWidth: 1, borderLeftColor: 'rgba(10,26,27,0.07)' },
-  statsBorderTop:  { borderTopWidth: 1,  borderTopColor:  'rgba(10,26,27,0.06)' },
-  statsActualValue:  { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.dark  },
-  statsPlannedValue: { fontFamily: FontFamily.uiRegular,   fontSize: 15, color: '#91AFAF'    },
-  statsDelta:        { fontFamily: FontFamily.uiSemiBold,  fontSize: 11                      },
+  statsHeaderText: { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.textMuted, letterSpacing: 1 },
+  statsMetricLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', paddingVertical: 13, paddingHorizontal: 12 },
+  statsBorderLeft: { borderLeftWidth: 1, borderLeftColor: C.border },
+  statsBorderTop:  { borderTopWidth: 1,  borderTopColor: C.border },
+  statsActualValue:  { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.textPrimary },
+  statsPlannedValue: { fontFamily: FontFamily.uiRegular,   fontSize: 15, color: C.textMuted },
+  statsDelta:        { fontFamily: FontFamily.uiSemiBold,  fontSize: 11 },
   statsDeltaGood:    { color: C.success },
 
   titleCard:  { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   titleText: {
-    fontFamily: FontFamily.displayBold, fontSize: 20, color: C.dark, letterSpacing: 0.2,
-    borderBottomWidth: 2, borderBottomColor: 'rgba(10,26,27,0.25)', borderStyle: 'dashed', paddingBottom: 4,
+    fontFamily: FontFamily.displayBold, fontSize: 20, color: C.textPrimary, letterSpacing: 0.2,
+    borderBottomWidth: 2, borderBottomColor: C.borderStrong, borderStyle: 'dashed', paddingBottom: 4,
   },
   titleInput: {
-    fontFamily: FontFamily.displayBold, fontSize: 20, color: C.dark, letterSpacing: 0.2,
+    fontFamily: FontFamily.displayBold, fontSize: 20, color: C.textPrimary, letterSpacing: 0.2,
     borderBottomWidth: 2, borderBottomColor: C.primary, paddingBottom: 4,
   },
-  titleHint: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: '#91AFAF', marginTop: 5 },
-  editBtn:   { width: 36, height: 36, borderWidth: 1.5, borderColor: 'rgba(10,26,27,0.12)', borderRadius: 9, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  titleHint: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textMuted, marginTop: 5 },
+  editBtn:   { width: 36, height: 36, borderWidth: 1.5, borderColor: C.borderMedium, borderRadius: 9, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
-  aiAnalysisCard:   { padding: 14, backgroundColor: '#EAF3F3', borderColor: 'rgba(27,108,112,0.12)' },
+  aiAnalysisCard:   { padding: 14, backgroundColor: C.primaryFaint, borderColor: C.borderMedium },
   aiAnalysisHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
   aiSmallAvatar:    { width: 28, height: 28, borderRadius: 14, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   aiAnalysisLabel:  { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.primary, letterSpacing: 1.2, textTransform: 'uppercase' },
-  aiAnalysisText:   { fontFamily: FontFamily.uiRegular,  fontSize: 13.5, color: C.dark,    lineHeight: 22, marginBottom: 10 },
+  aiAnalysisText:   { fontFamily: FontFamily.uiRegular,  fontSize: 13.5, color: C.textPrimary, lineHeight: 22, marginBottom: 10 },
   aiAnalysisDanger: { fontFamily: FontFamily.uiMedium,   fontSize: 13.5, color: C.danger,  lineHeight: 22 },
 
-  goalsCard: { borderWidth: 1.5, borderColor: 'rgba(27,108,112,0.25)', borderRadius: 16, padding: 14, backgroundColor: 'rgba(234,243,243,0.5)', gap: 12 },
+  goalsCard: { borderWidth: 1.5, borderColor: C.borderMedium, borderRadius: 16, padding: 14, backgroundColor: C.primaryFaint, gap: 12 },
 
   goalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  goalTitle:    { fontFamily: FontFamily.uiMedium, fontSize: 13, color: C.dark    },
+  goalTitle:    { fontFamily: FontFamily.uiMedium, fontSize: 13, color: C.textPrimary },
   goalPercent:  { fontFamily: FontFamily.uiBold,   fontSize: 13, color: C.primary },
-  progressTrack:  { height: 6, backgroundColor: 'rgba(10,26,27,0.08)', borderRadius: 3, overflow: 'hidden' },
+  progressTrack:  { height: 6, backgroundColor: C.borderMedium, borderRadius: 3, overflow: 'hidden' },
   progressFill:   { height: 6, backgroundColor: C.primary, borderRadius: 3 },
-  goalSubtext:    { fontFamily: FontFamily.uiRegular, fontSize: 11, color: '#4C6B6C', marginTop: 4 },
-  goalAchievedCard:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#EAF3F3', borderWidth: 1, borderColor: 'rgba(27,108,112,0.15)', borderRadius: 10, padding: 11 },
+  goalSubtext:    { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textSecondary, marginTop: 4 },
+  goalAchievedCard:  { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card, borderWidth: 1, borderColor: C.borderMedium, borderRadius: 10, padding: 11 },
   goalAchievedBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.success, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  goalAchievedTitle: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.dark    },
+  goalAchievedTitle: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textPrimary },
   goalAchievedSub:   { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.success },
 
   askRow:   { flexDirection: 'row', gap: 10, alignItems: 'center' },
   askInput: {
     flex: 1, height: 50,
     backgroundColor: C.card,
-    borderWidth: 1.5, borderColor: 'rgba(10,26,27,0.1)',
+    borderWidth: 1.5, borderColor: C.borderMedium,
     borderRadius: 25,
     paddingHorizontal: 18,
-    fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.dark,
-    shadowColor: '#0A1A1B', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+    fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.textPrimary,
+    shadowColor: C.textPrimary, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
   },
   sendBtn: {
     width: 50, height: 50, borderRadius: 25,
@@ -490,11 +487,42 @@ function makeStyles(C: ColorPalette) {
     flexShrink: 0,
   },
 
-  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 4, gap: 10 },
-  discardBtn: { height: 40, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(212,71,10,0.25)', backgroundColor: 'rgba(212,71,10,0.06)', alignItems: 'center', justifyContent: 'center' },
+  discardBtn: {
+    alignSelf: 'center',
+    height: 40,
+    paddingHorizontal: 14,
+    marginTop: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: C.dangerFaint,
+    backgroundColor: C.dangerFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   discardBtnText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.danger, letterSpacing: 0.2 },
-  saveBtnBottom: { flex: 1, height: 52, backgroundColor: C.dark, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', ...Shadow.button },
-  saveBtnBottomText: { fontFamily: FontFamily.uiSemiBold, fontSize: 14, color: C.white, letterSpacing: 0.5, textTransform: 'uppercase' },
+
+  saveFooter: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    backgroundColor: C.bg,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+  },
+  saveFooterBtn: {
+    height: 52,
+    backgroundColor: C.primary,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.button,
+  },
+  saveFooterBtnText: {
+    fontFamily: FontFamily.uiSemiBold,
+    fontSize: 14,
+    color: C.white,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   });
 }
 
@@ -524,10 +552,10 @@ function makeBubbleStyles(C: ColorPalette) {
     borderRadius: 16,
     borderTopLeftRadius: 4,   // chat bubble corner — message comes from left
     borderWidth: 1,
-    borderColor: 'rgba(10,26,27,0.07)',
+    borderColor: C.border,
     padding: 13,
     gap: 4,
-    shadowColor: '#0A1A1B',
+    shadowColor: C.textPrimary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -541,7 +569,7 @@ function makeBubbleStyles(C: ColorPalette) {
   },
   headline: {
     fontFamily: FontFamily.displayBold,
-    fontSize: 19, color: C.dark,
+    fontSize: 19, color: C.textPrimary,
     lineHeight: 23, letterSpacing: 0.2,
   },
   body: {
