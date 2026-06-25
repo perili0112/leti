@@ -7,8 +7,8 @@
 // ── Light Colors (default) ────────────────────────────────────
 export const Colors = {
   // Backgrounds
-  bg: '#F3F0E9',        // warm off-white — app background
-  card: '#FFFFFF',      // card surfaces
+  bg: '#EDE9E0',        // warm off-white — app background
+  card: '#F5F2EB',      // card surfaces
   cardAlt: '#EEEAE4',   // slightly warmer card (last run card in mockup)
 
   // Dark surfaces (run tracker, after-run header, nav)

@@ -22,7 +22,7 @@ import { router } from 'expo-router';
 import { type ColorPalette, FontFamily, Spacing, Radius, Shadow } from '../../constants/theme';
 import { useTheme } from '../../constants/ThemeContext';
 import { useTabBarInset } from '../../hooks/useTabBarInset';
-import { LetiMark } from '../_components/LetiLogo';
+import { LetiAvatar } from '../_components/LetiAvatar';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -511,21 +511,21 @@ function makeEmStyles(C: ColorPalette) { return StyleSheet.create({
     paddingBottom: 0,
   },
   handle: { alignSelf: 'center', width: 36, height: 5, backgroundColor: 'rgba(10,26,27,0.15)', borderRadius: 3, marginTop: 14, marginBottom: 8 },
-  sheetTitle: { fontFamily: FontFamily.displayBold, fontSize: 19, color: C.dark, paddingHorizontal: 20, paddingBottom: 14 },
+  sheetTitle: { fontFamily: FontFamily.displayBold, fontSize: 19, color: C.textPrimary, paddingHorizontal: 20, paddingBottom: 14 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingBottom: 14 },
   input: {
     flex: 1, height: 48,
     backgroundColor: C.card,
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: 'rgba(10,26,27,0.1)',
+    borderColor: C.borderMedium,
     paddingHorizontal: 18,
     fontFamily: FontFamily.uiRegular,
     fontSize: 14,
-    color: C.dark,
+    color: C.textPrimary,
     ...Shadow.cardSubtle,
   },
-  sendBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.dark, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.cardAlt, alignItems: 'center', justifyContent: 'center' },
   sendBtnActive: { backgroundColor: C.primary, shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 4 },
 });}
 
@@ -610,7 +610,7 @@ function EditModal({ visible, onSend, onClose }: { visible: boolean; onSend: (ms
               value={msg}
               onChangeText={setMsg}
               placeholder="Tell me what you'd like to change..."
-              placeholderTextColor="#C0BCBA"
+              placeholderTextColor={C.textTertiary}
               multiline={false}
               returnKeyType="send"
               autoFocus
@@ -738,7 +738,7 @@ function makeDecStyles(C: ColorPalette) { return StyleSheet.create({
     borderBottomColor: C.border,
     backgroundColor: C.bg,
   },
-  titleBarText: { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.dark, letterSpacing: 0.3 },
+  titleBarText: { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.textPrimary, letterSpacing: 0.3 },
   content: { padding: Spacing.xl, gap: Spacing.md, flexGrow: 1 },
   summaryCard: {
     backgroundColor: C.primaryFaint,
@@ -748,9 +748,8 @@ function makeDecStyles(C: ColorPalette) { return StyleSheet.create({
     padding: Spacing.md,
   },
   summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  summaryAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' },
   summaryHeaderLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.primary, letterSpacing: 1.2, textTransform: 'uppercase' },
-  summaryBody: { fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.dark, lineHeight: 21, marginBottom: 10 },
+  summaryBody: { fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.textPrimary, lineHeight: 21, marginBottom: 10 },
   summaryDivider: { height: 1, backgroundColor: 'rgba(27,108,112,0.15)', marginBottom: 10 },
   changeRow: { flexDirection: 'row', gap: 6, marginBottom: 7 },
   changeArrow: { fontFamily: FontFamily.uiRegular, fontSize: 12.5, color: C.textMuted },
@@ -759,10 +758,10 @@ function makeDecStyles(C: ColorPalette) { return StyleSheet.create({
   btnRow: { flexDirection: 'row', gap: 10 },
   btnNew: {
     flex: 1, height: 68,
-    backgroundColor: C.dark,
+    backgroundColor: C.primary,
     borderRadius: Radius.md,
     alignItems: 'center', justifyContent: 'center', gap: 2,
-    shadowColor: C.dark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 5,
+    shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 5,
   },
   btnNewTop: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 },
   btnNewBottom: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.accent, textTransform: 'uppercase', letterSpacing: 0.8 },
@@ -770,12 +769,12 @@ function makeDecStyles(C: ColorPalette) { return StyleSheet.create({
     flex: 1, height: 68,
     backgroundColor: C.bg,
     borderWidth: 1.5,
-    borderColor: 'rgba(10,26,27,0.25)',
+    borderColor: C.borderStrong,
     borderRadius: Radius.md,
     alignItems: 'center', justifyContent: 'center', gap: 2,
   },
-  btnOldTop: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.dark, textTransform: 'uppercase', letterSpacing: 0.8 },
-  btnOldBottom: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.dark, textTransform: 'uppercase', letterSpacing: 0.8 },
+  btnOldTop: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.textPrimary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  btnOldBottom: { fontFamily: FontFamily.uiSemiBold, fontSize: 11, color: C.textPrimary, textTransform: 'uppercase', letterSpacing: 0.8 },
 });}
 
 function DecisionState({ onAccept, onKeep }: { onAccept: () => void; onKeep: () => void }) {
@@ -793,9 +792,7 @@ function DecisionState({ onAccept, onKeep }: { onAccept: () => void; onKeep: () 
         {/* AI change summary */}
         <View style={dec.summaryCard}>
           <View style={dec.summaryHeader}>
-            <View style={dec.summaryAvatar}>
-              <LetiMark size={14} variant="white" />
-            </View>
+            <LetiAvatar size={14} />
             <Text style={dec.summaryHeaderLabel}>Leti AI · Here's what changed</Text>
           </View>
           <Text style={dec.summaryBody}>
@@ -950,7 +947,7 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
   titleBarText: {
     fontFamily: FontFamily.displayBold,
     fontSize: 18,
-    color: C.dark,
+    color: C.textPrimary,
   },
 
   // Lock state
@@ -972,7 +969,7 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
   lockTitle: {
     fontFamily: FontFamily.displayBold,
     fontSize: 20,
-    color: C.dark,
+    color: C.textPrimary,
     textAlign: 'center',
   },
   lockBody: {
@@ -992,7 +989,7 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(27,108,112,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  emptyTitle: { fontFamily: FontFamily.displayBold, fontSize: 22, color: C.dark },
+  emptyTitle: { fontFamily: FontFamily.displayBold, fontSize: 22, color: C.textPrimary },
   emptyBody: { fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.textSecondary, textAlign: 'center', lineHeight: 21, maxWidth: 220 },
   emptyFooter: { gap: Spacing.sm },
 
@@ -1009,7 +1006,7 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   progressLabel: { fontFamily: FontFamily.uiRegular, fontSize: 12, color: C.textSecondary },
   progressValue: { fontFamily: FontFamily.uiSemiBold, fontSize: 12, color: C.primary },
-  progressTrack: { height: 6, backgroundColor: 'rgba(10,26,27,0.08)', borderRadius: 3, overflow: 'hidden' },
+  progressTrack: { height: 6, backgroundColor: C.borderMedium, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%' as any, backgroundColor: C.primary, borderRadius: 3 },
 
   // Race card
@@ -1025,9 +1022,9 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
     ...Shadow.cardSubtle,
   },
   raceCountdown: { flexShrink: 0 },
-  raceNum: { fontFamily: FontFamily.displayExtraBold, fontSize: 56, color: C.dark, lineHeight: 58, letterSpacing: -2 },
+  raceNum: { fontFamily: FontFamily.displayExtraBold, fontSize: 56, color: C.textPrimary, lineHeight: 58, letterSpacing: -2 },
   raceCountdownLabel: { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' },
-  raceName: { fontFamily: FontFamily.uiSemiBold, fontSize: 14, color: C.dark },
+  raceName: { fontFamily: FontFamily.uiSemiBold, fontSize: 14, color: C.textPrimary },
   raceDate: { fontFamily: FontFamily.uiRegular, fontSize: 12, color: C.textSecondary },
 
   // Info card (thumb shadow zone)
@@ -1046,7 +1043,7 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
   // Buttons
   btnPrimary: {
     height: 64,
-    backgroundColor: C.dark,
+    backgroundColor: C.primary,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1058,12 +1055,12 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
     height: 50,
     backgroundColor: C.bg,
     borderWidth: 1.5,
-    borderColor: 'rgba(10,26,27,0.25)',
+    borderColor: C.borderStrong,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnSecondaryText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.dark, letterSpacing: 0.3 },
+  btnSecondaryText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textPrimary, letterSpacing: 0.3 },
 
   // "See the whole plan →" — sits directly below calendar, above the divider
   btnSeeAll: {
@@ -1071,29 +1068,29 @@ function makeSStyles(C: ColorPalette) { return StyleSheet.create({
     marginTop: 6,
     backgroundColor: C.bg,
     borderWidth: 1.5,
-    borderColor: 'rgba(10,26,27,0.25)',
+    borderColor: C.borderStrong,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnSeeAllText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.dark, letterSpacing: 0.3 },
+  btnSeeAllText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textPrimary, letterSpacing: 0.3 },
 
   btnOutline: {
     width: '100%',
     height: 54,
     backgroundColor: C.card,
     borderWidth: 1.5,
-    borderColor: 'rgba(10,26,27,0.3)',
+    borderColor: C.borderStrong,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnOutlineText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.dark },
+  btnOutlineText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.textPrimary },
 
   btnDanger: { height: 36, alignItems: 'center', justifyContent: 'center' },
   btnDangerText: { fontFamily: FontFamily.uiRegular, fontSize: 13, color: C.textTertiary, textDecorationLine: 'underline' },
 
-  divider: { height: 1, backgroundColor: 'rgba(10,26,27,0.08)', marginHorizontal: -Spacing.lg },
+  divider: { height: 1, backgroundColor: C.border, marginHorizontal: -Spacing.lg },
   });
 }
 
@@ -1112,7 +1109,7 @@ function makeCalStyles(C: ColorPalette) { return StyleSheet.create({
     paddingHorizontal: 2,
     marginBottom: 2,
   },
-  weekDone: { backgroundColor: 'rgba(10,26,27,0.025)' },
+  weekDone: { backgroundColor: C.cardAlt },
   weekNow: { backgroundColor: C.card, borderWidth: 1.5, borderColor: C.primary },
 
   wkNum: { fontFamily: FontFamily.uiSemiBold, fontSize: 8, color: C.textMuted, letterSpacing: 0.5, textTransform: 'uppercase' },

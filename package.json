@@ -1,7 +1,7 @@
 {
   "name": "leti",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -13,7 +13,6 @@
     "@expo-google-fonts/figtree": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "expo": "~54.0.0",
-    "expo-keep-awake": "~15.0.8",
     "expo-font": "~14.0.11",
     "expo-linking": "~8.0.11",
     "expo-navigation-bar": "~5.0.10",

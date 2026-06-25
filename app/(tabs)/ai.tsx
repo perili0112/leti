@@ -142,16 +142,14 @@ export default function AIScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!hasMessages ? (
           <View style={s.emptyWrap}>
-            <View style={s.emptyIcon}>
-              <LetiMark size={28} />
-            </View>
+            <LetiMark size={28} />
             <Text style={s.emptyText}>Ask Leti anything about your training.</Text>
           </View>
         ) : (
           <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={[s.messagesContent, { paddingBottom: tabBarInset }]} showsVerticalScrollIndicator={false} onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
             {messages.map(msg => (
               <View key={msg.id} style={[s.bubble, msg.role === 'user' ? s.bubbleUser : s.bubbleAI]}>
-                {msg.role === 'ai' && <View style={s.aiAvatarSmall}><LetiMark size={14} variant="white" /></View>}
+                {msg.role === 'ai' && <LetiMark size={14} />}
                 <View style={[s.bubbleText, msg.role === 'user' ? s.bubbleTextUser : s.bubbleTextAI]}>
                   <Text style={msg.role === 'user' ? s.msgTextUser : s.msgTextAI}>{msg.text}</Text>
                 </View>
@@ -159,7 +157,7 @@ export default function AIScreen() {
             ))}
             {isTyping && (
               <View style={[s.bubble, s.bubbleAI]}>
-                <View style={s.aiAvatarSmall}><LetiMark size={14} variant="white" /></View>
+                <LetiMark size={14} />
                 <View style={s.bubbleTextAI}><Text style={s.typingDots}>· · ·</Text></View>
               </View>
             )}
@@ -205,14 +203,12 @@ function makeStyles(C: ColorPalette) {
     topBar:        { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.md, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.bg },
     topBarTitle:   { fontFamily: FontFamily.displayBold, fontSize: 18, color: C.textPrimary, letterSpacing: 0.4 },
     historyBtn:    { width: 38, height: 38, borderRadius: 10, borderWidth: 1.5, borderColor: C.borderMedium, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
-    emptyWrap:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-    emptyIcon:     { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: C.primaryFaint, backgroundColor: C.primaryFaint, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+    emptyWrap:     { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 14 },
     emptyText:     { fontFamily: FontFamily.uiRegular, fontSize: 16, color: C.textSecondary, textAlign: 'center', lineHeight: 24 },
     messagesContent: { padding: Spacing.lg, gap: Spacing.md },
     bubble:        { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 4 },
     bubbleUser:    { justifyContent: 'flex-end' },
     bubbleAI:      { justifyContent: 'flex-start' },
-    aiAvatarSmall: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 2 },
     bubbleText:    { maxWidth: '78%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
     bubbleTextUser: { backgroundColor: C.dark, borderBottomRightRadius: 4 },
     bubbleTextAI:  { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderBottomLeftRadius: 4 },

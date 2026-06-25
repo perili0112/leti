@@ -61,7 +61,7 @@ type StateStyle = { bg: string; border: string; borderWidth: number; labelColor:
 
 function getStateStyles(C: ColorPalette): Record<TowerState, StateStyle> {
   return {
-    onTarget:  { bg: C.dark,         border: C.dark,    borderWidth: 0,   labelColor: C.textMuted    },
+    onTarget:  { bg: C.textPrimary,  border: C.textPrimary, borderWidth: 0, labelColor: C.textMuted },
     offTarget: { bg: C.primaryFaint, border: C.primary, borderWidth: 1.5, labelColor: C.primary      },
     extreme:   { bg: C.accentFaint,  border: C.accent,  borderWidth: 1.5, labelColor: C.accent       },
     burnout:   { bg: C.dangerFaint,  border: C.danger,  borderWidth: 1.5, labelColor: C.danger       },
@@ -178,13 +178,13 @@ export function PaceChartTowers({ kms, plannedPace }: PaceChartTowersProps) {
         {/* Dashed reference line at planned-pace height */}
         <View
           pointerEvents="none"
-          style={[r.refLine, { bottom: refLineBottom, borderBottomColor: C.dark }]}
+          style={[r.refLine, { bottom: refLineBottom, borderBottomColor: C.textSecondary }]}
         />
 
         {/* Plan pace label — floats above reference line */}
         <Text
           pointerEvents="none"
-          style={[r.refLabel, { bottom: refLineBottom + 3, color: C.dark, backgroundColor: C.bg + 'E8' }]}
+          style={[r.refLabel, { bottom: refLineBottom + 3, color: C.textPrimary, backgroundColor: C.card }]}
           numberOfLines={1}
         >
           {planLabel}
@@ -210,7 +210,7 @@ export function PaceChartTowers({ kms, plannedPace }: PaceChartTowersProps) {
             <View key={state} style={leg.row}>
               <View style={[leg.swatch, { backgroundColor: vs.bg, borderColor: vs.border, borderWidth: Math.max(1, vs.borderWidth) }]} />
               <Text style={[leg.text, { color: C.textSecondary }]}>
-                <Text style={[leg.textBold, { color: state === 'burnout' ? C.danger : C.dark }]}>{label}</Text>
+                <Text style={[leg.textBold, { color: state === 'burnout' ? C.danger : C.textPrimary }]}>{label}</Text>
                 {'  ·  '}{sub}
               </Text>
             </View>

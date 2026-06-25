@@ -27,7 +27,7 @@ import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../const
 import { useTheme } from '../constants/ThemeContext';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../constants/ThemeContext';
 import { PaceChartTowers, PaceKm } from './_components/PaceChart';
-import { LetiMark } from './_components/LetiLogo';
+import { LetiAvatar } from './_components/LetiAvatar';
 
 // ─────────────────────────────────────────────────────────────
 // MOCK DATA
@@ -139,9 +139,9 @@ function RouteMap({ distKm, C }: { distKm: string; C: ColorPalette }) {
         <Circle cx={36}  cy={160} r={9}   fill="#F3F0E9" stroke={C.primary} strokeWidth={2} />
         <Circle cx={36}  cy={160} r={3.5} fill={C.primary} />
         <SvgText x={50}  y={164} fill={C.primary} fontSize={9.5} fontFamily="Figtree_600SemiBold">Start</SvgText>
-        <Circle cx={107} cy={112} r={9}   fill={C.dark} />
-        <Circle cx={107} cy={112} r={3.5} fill="#F3F0E9" />
-        <SvgText x={121} y={116} fill={C.dark} fontSize={9.5} fontFamily="Figtree_600SemiBold">Finish</SvgText>
+        <Circle cx={107} cy={112} r={9}   fill={C.textPrimary} />
+        <Circle cx={107} cy={112} r={3.5} fill={C.card} />
+        <SvgText x={121} y={116} fill={C.textPrimary} fontSize={9.5} fontFamily="Figtree_600SemiBold">Finish</SvgText>
         <Rect x={270} y={160} width={78} height={22} rx={4} fill="rgba(10,26,27,0.70)" />
         <SvgText x={309} y={175} fill="#fff" fontSize={10} fontFamily="Figtree_600SemiBold" textAnchor="middle">{distKm}</SvgText>
       </Svg>
@@ -183,12 +183,12 @@ export default function RunDetailScreen() {
       {/* Top nav */}
       <View style={rd.topNav}>
         <TouchableOpacity style={rd.navBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={C.dark} />
+          <ArrowLeft size={20} color={C.textPrimary} />
         </TouchableOpacity>
         <Text style={rd.navTitle}>Run Detail</Text>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           <TouchableOpacity style={rd.navBtn} onPress={handleShare} activeOpacity={0.7}>
-            <Share2 size={15} color="#4C6B6C" />
+            <Share2 size={15} color={C.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={rd.navBtn}
@@ -283,7 +283,7 @@ export default function RunDetailScreen() {
               onPress={() => setEditingTitle(!editingTitle)}
               activeOpacity={0.7}
             >
-              <Pencil size={15} color="#4C6B6C" />
+              <Pencil size={15} color={C.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -309,9 +309,7 @@ export default function RunDetailScreen() {
           <SecLabel text="AI Analysis" rd={rd} />
           <View style={rd.aiAnalysisCard}>
             <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
-              <View style={rd.aiAvatar}>
-                <LetiMark size={14} variant="white" />
-              </View>
+              <LetiAvatar size={14} style={{ marginTop: 1 }} />
               <Text style={rd.aiCardLabel}>Leti AI · Post-run analysis</Text>
             </View>
             {run.analysis.map((para, i) => (
@@ -348,13 +346,12 @@ function makeStyles(C: ColorPalette) {
   navBtn: {
     width: 36, height: 36,
     borderRadius: 9,
-    borderWidth: 1.5, borderColor: 'rgba(10,26,27,0.12)',
+    borderWidth: 1.5, borderColor: C.borderMedium,
     backgroundColor: C.card,
     alignItems: 'center', justifyContent: 'center',
-    ...Shadow.cardSubtle,
   },
-  navTitle: { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.dark, letterSpacing: 0.3 },
-  ellipsis: { fontSize: 16, color: '#4C6B6C', letterSpacing: -1 },
+  navTitle: { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.textPrimary, letterSpacing: 0.3 },
+  ellipsis: { fontSize: 16, color: C.textSecondary, letterSpacing: -1 },
 
   content: { padding: 18, gap: 16, paddingBottom: 40 },
   secLabel: {
@@ -386,9 +383,9 @@ function makeStyles(C: ColorPalette) {
   },
   statsHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(10,26,27,0.03)',
+    backgroundColor: C.cardAlt,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(10,26,27,0.07)',
+    borderBottomColor: C.border,
   },
   statsHeader: {
     flex: 1, padding: 8,
@@ -397,7 +394,7 @@ function makeStyles(C: ColorPalette) {
     letterSpacing: 1, textTransform: 'uppercase',
   },
   statsRow:       { flexDirection: 'row' },
-  statsRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(10,26,27,0.06)' },
+  statsRowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
   statsMetric: {
     flex: 1, padding: 13,
     fontFamily: FontFamily.uiSemiBold,
@@ -405,8 +402,8 @@ function makeStyles(C: ColorPalette) {
     letterSpacing: 0.8, textTransform: 'uppercase',
   },
   statsCell:    { flex: 1, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statsBorderL: { borderLeftWidth: 1, borderLeftColor: 'rgba(10,26,27,0.06)' },
-  statsActual:  { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.dark     },
+  statsBorderL: { borderLeftWidth: 1, borderLeftColor: C.border },
+  statsActual:  { fontFamily: FontFamily.displayBold, fontSize: 17, color: C.textPrimary },
   statsDelta:   { fontFamily: FontFamily.uiSemiBold,  fontSize: 11                         },
   statsPlanned: { fontFamily: FontFamily.uiRegular,   fontSize: 15, color: C.textMuted },
 
@@ -421,36 +418,32 @@ function makeStyles(C: ColorPalette) {
   },
   titleText: {
     fontFamily: FontFamily.displayBold, fontSize: 20,
-    color: C.dark, letterSpacing: 0.2,
-    borderBottomWidth: 2, borderBottomColor: 'rgba(10,26,27,0.22)',
+    color: C.textPrimary, letterSpacing: 0.2,
+    borderBottomWidth: 2, borderBottomColor: C.borderStrong,
     borderStyle: 'dashed', paddingBottom: 4,
   },
   titleInput: {
     fontFamily: FontFamily.displayBold, fontSize: 20,
-    color: C.dark,
+    color: C.textPrimary,
     borderBottomWidth: 2, borderBottomColor: C.primary, paddingBottom: 4,
   },
   editTitleBtn: {
     width: 36, height: 36, borderRadius: 9,
-    borderWidth: 1.5, borderColor: 'rgba(10,26,27,0.12)',
+    borderWidth: 1.5, borderColor: C.borderMedium,
     backgroundColor: C.bg,
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
 
-  // AI analysis
+  // AI analysis — flat card + teal accent (no faint wash / shadow stack in dark mode)
   aiAnalysisCard: {
-    backgroundColor: C.primaryFaint,
+    backgroundColor: C.card,
     borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: 'rgba(27,108,112,0.12)',
+    borderWidth: 1,
+    borderColor: C.border,
+    borderLeftWidth: 3,
+    borderLeftColor: C.primary,
     padding: 14,
-    ...Shadow.cardSubtle,
-  },
-  aiAvatar: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: C.primary,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, marginTop: 1,
   },
   aiCardLabel: {
     fontFamily: FontFamily.uiSemiBold, fontSize: 9.5,
@@ -458,6 +451,6 @@ function makeStyles(C: ColorPalette) {
     textTransform: 'uppercase', marginBottom: 6,
     marginTop: 3,
   },
-  analysisText: { fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.dark, lineHeight: 22 },
+  analysisText: { fontFamily: FontFamily.uiRegular, fontSize: 13.5, color: C.textPrimary, lineHeight: 22 },
   });
 }

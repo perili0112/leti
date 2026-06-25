@@ -23,7 +23,7 @@ import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../../co
 import { useTheme } from '../../constants/ThemeContext';
 import { useTabBarInset } from '../../hooks/useTabBarInset';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../../constants/ThemeContext';
-import { LetiMark } from '../_components/LetiLogo';
+import { LetiAvatar } from '../_components/LetiAvatar';
 import {
   MOCK_USER, MOCK_PLAN, MOCK_WEATHER, MOCK_LAST_RUN,
   getGreeting, formatDuration,
@@ -179,9 +179,7 @@ function PlanCardActive({
 function LetiInsightCard({ C, s }: { C: ColorPalette; s: ReturnType<typeof makeStyles> }) {
   return (
     <View style={s.insightCard}>
-      <View style={s.insightAvatar}>
-        <LetiMark size={14} variant="white" />
-      </View>
+      <LetiAvatar size={14} containerSize={30} />
       <Text style={s.insightText}>
         You've been consistent 3 weeks in a row — your weekly mileage is up 18%. Keep the easy runs easy.
       </Text>
@@ -573,7 +571,6 @@ function makeStyles(C: ColorPalette) {
 
     // ④ Insight card
     insightCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingVertical: 12, ...Shadow.card },
-    insightAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     insightText:   { flex: 1, fontFamily: FontFamily.uiRegular, fontSize: 12.5, color: C.textSecondary, lineHeight: 19 },
 
     // Last Run + Next Run

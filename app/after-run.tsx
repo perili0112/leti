@@ -27,7 +27,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { Pencil, Check, Send } from 'lucide-react-native';
@@ -39,7 +39,7 @@ import { FontFamily, Spacing, Radius, Shadow, type ColorPalette } from '../const
 import { useTheme } from '../constants/ThemeContext';
 import { fmtDist, fmtPace, distLabel, paceLabel } from '../constants/ThemeContext';
 import { PaceChartTowers, PaceKm } from './_components/PaceChart';
-import { LetiMark } from './_components/LetiLogo';
+import { LetiAvatar } from './_components/LetiAvatar';
 
 // ─────────────────────────────────────────────────────────────
 // PACE DATA — 10 km run, plan pace 5:00/km
@@ -113,9 +113,7 @@ function LetiChatBubble() {
   const b = makeBubbleStyles(C);
   return (
     <View style={b.row}>
-      <View style={b.avatar}>
-        <LetiMark size={16} variant="white" />
-      </View>
+      <LetiAvatar size={16} style={{ marginTop: 3 }} />
       <View style={b.bubble}>
         <Text style={b.badge}>PB Detected</Text>
         <Text style={b.headline}>That's your fastest 10K yet, Dimi.</Text>
@@ -189,9 +187,15 @@ function GoalsCard({ s, distUnit, C }: { s: any; distUnit: any; C: any }) {
 // AFTER RUN SCREEN
 // ─────────────────────────────────────────────────────────────
 
+const SAVE_FOOTER_BTN_H = 52;
+const SAVE_FOOTER_PAD_V = 12;
+
 export default function AfterRunScreen() {
   const { colors: C, isDark, distUnit } = useTheme();
+  const insets = useSafeAreaInsets();
   const s = React.useMemo(() => makeStyles(C), [C]);
+  const scrollBottomPad =
+    SAVE_FOOTER_PAD_V + SAVE_FOOTER_BTN_H + SAVE_FOOTER_PAD_V + insets.bottom;
   const [runTitle, setRunTitle]         = useState('Morning Tempo Run');
   const [editingTitle, setEditingTitle] = useState(false);
   const [aiInput, setAiInput]           = useState('');
@@ -231,17 +235,18 @@ export default function AfterRunScreen() {
       {/* Visual transition dark → light */}
       <View style={s.transition} />
 
-      {/* ── KEYBOARD-AWARE SCROLL AREA ── */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          style={{ flex: 1, backgroundColor: C.bg }}
-          contentContainerStyle={[s.scrollContent, { paddingBottom: 24 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+      {/* ── SCROLL + FIXED FOOTER ── */}
+      <View style={s.body}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          <ScrollView
+            style={{ flex: 1, backgroundColor: C.bg }}
+            contentContainerStyle={[s.scrollContent, { paddingBottom: scrollBottomPad }]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
           {/* ① LETI CHAT BUBBLE */}
           <LetiChatBubble />
@@ -324,11 +329,9 @@ export default function AfterRunScreen() {
 
           {/* ⑥ AI ANALYSIS */}
           <Text style={s.sectionLabel}>AI Analysis</Text>
-          <View style={[s.card, s.aiAnalysisCard]}>
+          <View style={s.aiAnalysisCard}>
             <View style={s.aiAnalysisHeader}>
-              <View style={s.aiSmallAvatar}>
-                <LetiMark size={14} variant="white" />
-              </View>
+              <LetiAvatar size={14} />
               <Text style={s.aiAnalysisLabel}>Leti AI · Post-run analysis</Text>
             </View>
             <Text style={s.aiAnalysisText}>
@@ -363,15 +366,16 @@ export default function AfterRunScreen() {
           <TouchableOpacity style={s.discardBtn} onPress={handleDiscard} activeOpacity={0.7}>
             <Text style={s.discardBtnText}>Discard Run</Text>
           </TouchableOpacity>
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-        {/* ── FIXED BOTTOM SAVE (Strava-style) ── */}
-        <SafeAreaView style={s.saveFooter} edges={['bottom']}>
+        {/* Fixed bottom save — outside keyboard view so it stays on screen */}
+        <View style={[s.saveFooter, { paddingBottom: Math.max(insets.bottom, SAVE_FOOTER_PAD_V) }]}>
           <TouchableOpacity style={s.saveFooterBtn} onPress={handleSaveRun} activeOpacity={0.88}>
             <Text style={s.saveFooterBtnText}>Save Run</Text>
           </TouchableOpacity>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+        </View>
+      </View>
     </View>
   );
 }
@@ -395,6 +399,7 @@ function makeStyles(C: ColorPalette) {
   navSpacer: { width: 36 },
   navTitle: { fontFamily: FontFamily.displayBold, fontSize: 18, color: C.white, letterSpacing: 0.3 },
 
+  body:          { flex: 1, position: 'relative' },
   transition:    { height: 16, backgroundColor: C.bg },
   scrollContent: { paddingHorizontal: 18, paddingTop: 4 },
 
@@ -449,14 +454,28 @@ function makeStyles(C: ColorPalette) {
   titleHint: { fontFamily: FontFamily.uiRegular, fontSize: 11, color: C.textMuted, marginTop: 5 },
   editBtn:   { width: 36, height: 36, borderWidth: 1.5, borderColor: C.borderMedium, borderRadius: 9, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 
-  aiAnalysisCard:   { padding: 14, backgroundColor: C.primaryFaint, borderColor: C.borderMedium },
+  aiAnalysisCard: {
+    padding: 14,
+    backgroundColor: C.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderLeftWidth: 3,
+    borderLeftColor: C.primary,
+  },
   aiAnalysisHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  aiSmallAvatar:    { width: 28, height: 28, borderRadius: 14, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   aiAnalysisLabel:  { fontFamily: FontFamily.uiSemiBold, fontSize: 9.5, color: C.primary, letterSpacing: 1.2, textTransform: 'uppercase' },
   aiAnalysisText:   { fontFamily: FontFamily.uiRegular,  fontSize: 13.5, color: C.textPrimary, lineHeight: 22, marginBottom: 10 },
   aiAnalysisDanger: { fontFamily: FontFamily.uiMedium,   fontSize: 13.5, color: C.danger,  lineHeight: 22 },
 
-  goalsCard: { borderWidth: 1.5, borderColor: C.borderMedium, borderRadius: 16, padding: 14, backgroundColor: C.primaryFaint, gap: 12 },
+  goalsCard: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: C.card,
+    gap: 12,
+  },
 
   goalTitleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   goalTitle:    { fontFamily: FontFamily.uiMedium, fontSize: 13, color: C.textPrimary },
@@ -502,19 +521,29 @@ function makeStyles(C: ColorPalette) {
   discardBtnText: { fontFamily: FontFamily.uiSemiBold, fontSize: 13, color: C.danger, letterSpacing: 0.2 },
 
   saveFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingTop: SAVE_FOOTER_PAD_V,
     backgroundColor: C.bg,
     borderTopWidth: 1,
     borderTopColor: C.border,
   },
   saveFooterBtn: {
-    height: 52,
+    height: SAVE_FOOTER_BTN_H,
+    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: C.primary,
     borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadow.button,
+    elevation: 4,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
   saveFooterBtnText: {
     fontFamily: FontFamily.uiSemiBold,
@@ -539,13 +568,6 @@ function makeBubbleStyles(C: ColorPalette) {
     marginTop: 8,
     marginBottom: 4,
   },
-  avatar: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: C.primary,
-    alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, marginTop: 3,
-  },
-  avatarIcon: { fontSize: 13, color: '#fff' },
   bubble: {
     flex: 1,
     backgroundColor: C.card,
